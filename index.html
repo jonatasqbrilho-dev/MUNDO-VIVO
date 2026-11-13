@@ -108,7 +108,7 @@ scene.add(trunks,crowns,crownTops);
 // Pedras espalhadas pela floresta e pelas margens.
 for(let i=0;i<190;i++){const x=(random()-.5)*480,z=(random()-.5)*480,riverX=25-z*.78;if(Math.abs(x-riverX)<17)continue;const s=.4+random()*.8;const rock=new THREE.Mesh(new THREE.DodecahedronGeometry(.8,0),new THREE.MeshStandardMaterial({color:'#858b7b',roughness:1}));rock.position.set(x,.42*s,z);rock.scale.set(s,s*.75,s);rock.rotation.set(.2,random()*Math.PI,.15);rock.castShadow=true;scene.add(rock)}
 
-// ANIMAIS SELVAGENS: modelos low-poly com pequenos movimentos naturais.
+// ANIMAIS SELVAGENS: locomoção com estados, aceleração e movimentos por espécie.
 const wildlife=[];
 const animalMats={
  fur:new THREE.MeshStandardMaterial({color:'#a66f3f',roughness:1}),
@@ -116,37 +116,60 @@ const animalMats={
  cream:new THREE.MeshStandardMaterial({color:'#e3d1ad',roughness:1}),
  boar:new THREE.MeshStandardMaterial({color:'#665044',roughness:1}),
  rabbit:new THREE.MeshStandardMaterial({color:'#b7a18a',roughness:1}),
- pink:new THREE.MeshStandardMaterial({color:'#bd8178',roughness:1}),
  antler:new THREE.MeshStandardMaterial({color:'#d6bd8e',roughness:1})
 };
-const bodyGeo=new THREE.SphereGeometry(1,9,7),headGeo=new THREE.SphereGeometry(1,8,6),legGeo=new THREE.CylinderGeometry(.075,.09,.58,6);
+const bodyGeo=new THREE.SphereGeometry(1,10,8),headGeo=new THREE.SphereGeometry(1,9,7);
+const legGeo=new THREE.CylinderGeometry(.075,.09,.58,6);
+function pickAnimalTarget(a){
+ let x,z,tries=0;
+ do{
+  x=THREE.MathUtils.clamp(a.group.position.x+(random()-.5)*85,-235,235);
+  z=THREE.MathUtils.clamp(a.group.position.z+(random()-.5)*85,-235,235);
+  tries++;
+ }while(Math.abs(x-(25-z*.78))<27&&tries<12);
+ a.target.set(x,0,z);
+ a.state=random()<(a.kind==='coelho'?.72:.58)?'walk':'graze';
+ a.stateTime=a.state==='walk'?5+random()*12:3+random()*9;
+ a.speedFactor=a.kind==='coelho'?1.15+random()*.65:a.kind==='cervo'?1+random()*.45:.65+random()*.4;
+}
 function makeAnimal(kind,index){
  const g=new THREE.Group();
- const isDeer=kind==='cervo',isBoar=kind==='javali',mat=isDeer?animalMats.fur:isBoar?animalMats.boar:animalMats.rabbit;
- const body=new THREE.Mesh(bodyGeo,mat);body.scale.set(isBoar?.72:.62,isBoar?.48:.42,isBoar?.34:.3);body.position.y=isBoar?.58:.62;g.add(body);
- const head=new THREE.Mesh(headGeo,mat);head.scale.set(isBoar?.25:.22,isBoar?.25:.23,isBoar?.23:.2);head.position.set(.48,isBoar?.78:.83,0);g.add(head);
- const snout=new THREE.Mesh(new THREE.SphereGeometry(.12,7,5),isBoar?animalMats.cream:animalMats.dark);snout.position.set(.66,isBoar?.7:.78,0);snout.scale.set(1,.7,.8);g.add(snout);
+ const isDeer=kind==='cervo',isBoar=kind==='javali',isRabbit=kind==='coelho';
+ const mat=isDeer?animalMats.fur:isBoar?animalMats.boar:animalMats.rabbit;
+ const body=new THREE.Mesh(bodyGeo,mat);
+ body.scale.set(isBoar?.72:isRabbit?.48:.62,isBoar?.48:isRabbit?.38:.42,isBoar?.34:isRabbit?.32:.3);
+ body.position.y=isBoar?.58:isRabbit?.48:.62;g.add(body);
+ const headRig=new THREE.Group();headRig.position.set(isRabbit?.32:.43,isRabbit?.66:.82,0);g.add(headRig);
+ const head=new THREE.Mesh(headGeo,mat);
+ head.scale.set(isBoar?.25:.22,isBoar?.25:.23,isBoar?.23:.2);head.position.set(.08,0,0);headRig.add(head);
+ const snout=new THREE.Mesh(new THREE.SphereGeometry(.12,7,5),isBoar?animalMats.cream:animalMats.dark);
+ snout.position.set(.26,-.08,0);snout.scale.set(1,.7,.8);headRig.add(snout);
  const legs=[];
  for(const x of [-.35,.32])for(const z of [-.2,.2]){
-  const leg=new THREE.Mesh(legGeo,mat);leg.position.set(x,.29,z);g.add(leg);legs.push(leg);
+  const pivot=new THREE.Group();pivot.position.set(x,isRabbit?.35:.48,z);
+  const leg=new THREE.Mesh(legGeo,mat);leg.position.y=-.29;pivot.add(leg);g.add(pivot);legs.push(pivot);
  }
+ const extras=[];
  if(isDeer){
   for(const side of [-1,1]){
-   const ear=new THREE.Mesh(new THREE.ConeGeometry(.075,.32,5),animalMats.fur);ear.position.set(.42,1.05,side*.16);ear.rotation.z=-.35;g.add(ear);
-   const horn=new THREE.Mesh(new THREE.CylinderGeometry(.025,.045,.42,5),animalMats.antler);horn.position.set(.43,1.2,side*.1);horn.rotation.z=-.25;g.add(horn);
+   const ear=new THREE.Mesh(new THREE.ConeGeometry(.075,.32,5),animalMats.fur);ear.position.set(.0,.2,side*.16);ear.rotation.z=-.35;headRig.add(ear);extras.push(ear);
+   const horn=new THREE.Mesh(new THREE.CylinderGeometry(.025,.045,.42,5),animalMats.antler);horn.position.set(.02,.32,side*.1);horn.rotation.z=-.25;headRig.add(horn);
   }
- }else if(kind==='coelho'){
-  for(const side of [-1,1]){const ear=new THREE.Mesh(new THREE.CapsuleGeometry(.07,.28,3,6),animalMats.rabbit);ear.position.set(.42,1.12,side*.1);ear.rotation.z=-.18;g.add(ear)}
-  const tail=new THREE.Mesh(new THREE.SphereGeometry(.13,7,6),animalMats.cream);tail.position.set(-.58,.7,0);g.add(tail);
+ }else if(isRabbit){
+  for(const side of [-1,1]){const ear=new THREE.Mesh(new THREE.CapsuleGeometry(.07,.28,3,6),animalMats.rabbit);ear.position.set(.0,.3,side*.1);ear.rotation.z=-.18;headRig.add(ear);extras.push(ear)}
+  const tail=new THREE.Mesh(new THREE.SphereGeometry(.13,7,6),animalMats.cream);tail.position.set(-.48,.5,0);g.add(tail);
  }else{
-  const tail=new THREE.Mesh(new THREE.ConeGeometry(.09,.3,5),animalMats.dark);tail.position.set(-.72,.7,0);tail.rotation.z=Math.PI/2;g.add(tail);
+  const tail=new THREE.Mesh(new THREE.ConeGeometry(.09,.3,5),animalMats.dark);tail.position.set(-.72,.7,0);tail.rotation.z=Math.PI/2;g.add(tail);extras.push(tail);
  }
  const angle=random()*Math.PI*2,radius=35+random()*190;
  g.position.set(Math.cos(angle)*radius,0,Math.sin(angle)*radius);
- g.rotation.y=random()*Math.PI*2;
  const size=isDeer?.95+random()*.35:isBoar?.9+random()*.25:.55+random()*.25;
  g.scale.setScalar(size);scene.add(g);
- wildlife.push({group:g,legs,kind,phase:random()*Math.PI*2,originX:g.position.x,originZ:g.position.z,speed:.7+random()*.7,range:5+random()*10});
+ const animal={group:g,body,headRig,legs,extras,kind,target:new THREE.Vector3(),state:'idle',stateTime:2+random()*5,
+  speed:isDeer?2.1:isBoar?1.35:2.6,speedFactor:1,heading:random()*Math.PI*2,phase:random()*Math.PI*2,
+  gait:0,homeX:g.position.x,homeZ:g.position.z};
+ pickAnimalTarget(animal);animal.stateTime=1+random()*5;animal.state='idle';
+ wildlife.push(animal);
 }
 for(let i=0;i<28;i++)makeAnimal('cervo',i);
 for(let i=0;i<22;i++)makeAnimal('javali',i);
@@ -157,6 +180,47 @@ addEventListener('resize',resize);
 document.getElementById('reset').onclick=()=>{camera.position.copy(startPos);controls.target.set(0,0,0);controls.update()};
 const guide=document.getElementById('guide');document.getElementById('help').onclick=()=>guide.hidden=!guide.hidden;document.getElementById('close').onclick=()=>guide.hidden=true;
 const clock=new THREE.Clock();
-function animate(){requestAnimationFrame(animate);const t=clock.getElapsedTime();for(const a of wildlife){const p=t*a.speed+a.phase;a.group.position.x=a.originX+Math.sin(p*.22)*a.range;a.group.position.z=a.originZ+Math.cos(p*.22)*a.range;a.group.rotation.y=Math.atan2(Math.cos(p*.22),-Math.sin(p*.22));for(let j=0;j<a.legs.length;j++)a.legs[j].rotation.z=Math.sin(p*3+(j%2)*Math.PI)*.28;a.group.position.y=Math.abs(Math.sin(p*3))*.035}controls.update();renderer.render(scene,camera)}animate();
+function animate(){
+ requestAnimationFrame(animate);
+ const delta=Math.min(clock.getDelta(),.05),t=clock.elapsedTime;
+ for(const a of wildlife){
+  a.stateTime-=delta;
+  if(a.stateTime<=0){
+   if(a.state==='walk'){a.state=random()<.72?'graze':'idle';a.stateTime=3+random()*8}
+   else pickAnimalTarget(a);
+  }
+  const dx=a.target.x-a.group.position.x,dz=a.target.z-a.group.position.z;
+  const distance=Math.hypot(dx,dz);
+  const moving=a.state==='walk'&&distance>.8;
+  if(moving){
+   const desired=Math.atan2(-dz,dx);
+   let turn=THREE.MathUtils.euclideanModulo(desired-a.heading+Math.PI,Math.PI*2)-Math.PI;
+   a.heading+=turn*Math.min(1,delta*(a.kind==='coelho'?5:2.8));
+   const speed=a.speed*a.speedFactor*Math.min(1,distance/3);
+   a.group.position.x+=Math.cos(a.heading)*speed*delta;
+   a.group.position.z-=Math.sin(a.heading)*speed*delta;
+   a.gait+=delta*(a.kind==='coelho'?10:a.kind==='cervo'?8:5.5)*a.speedFactor;
+  }else{
+   // Pausas para observar, farejar e pastar antes de escolher outro destino.
+   a.gait+=delta*1.8;
+  }
+  a.group.rotation.y=a.heading;
+  const stride=moving?1:0;
+  for(let j=0;j<a.legs.length;j++){
+   const phase=a.gait+(j===0||j===3?0:Math.PI);
+   const swing=moving?Math.sin(phase)*(a.kind==='coelho'?.55:.38):Math.sin(t*1.7+a.phase+j)*.025;
+   a.legs[j].rotation.z=swing;
+  }
+  if(a.kind==='coelho'&&moving){
+   a.group.position.y=Math.max(0,Math.sin(a.gait*2))*.13;
+  }else a.group.position.y=THREE.MathUtils.damp(a.group.position.y,0,8,delta);
+  const graze=a.state==='graze'&&!moving;
+  a.headRig.rotation.z=THREE.MathUtils.damp(a.headRig.rotation.z,graze?.42+Math.sin(t*2+a.phase)*.08:Math.sin(t*1.3+a.phase)*.035,3,delta);
+  a.body.rotation.z=THREE.MathUtils.damp(a.body.rotation.z,moving?Math.sin(a.gait)*.025:Math.sin(t*1.5+a.phase)*.012,4,delta);
+  if(a.kind==='javali'&&graze)a.headRig.rotation.x=Math.sin(t*3+a.phase)*.08;
+ }
+ controls.update();renderer.render(scene,camera);
+}
+animate();
 </script>
 </body></html>
