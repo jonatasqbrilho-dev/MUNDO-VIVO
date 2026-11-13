@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#183a2b">
+<title>Mundo Vivo — O começo de uma civilização</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Manrope:wght@500;600;700;800&display=swap');
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;font-family:'DM Sans',sans-serif}
+#scene{position:fixed;inset:0;background:#b9d0bd}
+canvas{display:block}
+.top{position:fixed;z-index:2;top:22px;left:25px;display:flex;align-items:center;gap:12px;color:#183a2b}
+.logo{width:43px;height:43px;border-radius:14px;background:#183a2b;color:#d8e7bb;display:grid;place-items:center;font:800 14px Manrope;box-shadow:0 5px 18px #10251c44}
+.brand{display:flex;flex-direction:column;gap:2px;text-shadow:0 1px 8px #18332355}.brand b{font:800 13px Manrope;letter-spacing:2.5px}.brand small{font-size:11px;color:#31503c;font-weight:600}
+.status{margin-left:18px;padding:9px 12px;border-radius:30px;background:#183a2bdf;color:#e5efdc;font-size:9px;font-weight:800;letter-spacing:1px}
+.status i,.live{display:inline-block;width:7px;height:7px;border-radius:50%;background:#a7d66e;margin-right:7px;box-shadow:0 0 0 4px #a7d66e25}
+.card{position:fixed;z-index:2;top:105px;left:25px;width:min(345px,calc(100vw - 50px));padding:22px;border:1px solid #ffffff70;border-radius:18px;color:#203b2b;background:#f4f3e9e8;box-shadow:0 14px 40px #17332224;backdrop-filter:blur(12px)}
+.eyebrow{font-size:9px;font-weight:800;letter-spacing:1.2px;color:#648052}.card h1{margin:11px 0 9px;font:800 25px/1.12 Manrope;letter-spacing:-1px}.card p{margin:0;font-size:12px;line-height:1.55;color:#627060}
+.stats{display:flex;gap:24px;margin-top:19px;padding-top:15px;border-top:1px solid #d9ddcf}.stats div{display:flex;flex-direction:column;gap:2px}.stats b{font:800 19px Manrope;color:#315a3d}.stats span{font-size:9px;color:#71806c;font-weight:600}
+.tools{position:fixed;z-index:3;right:24px;top:24px;display:flex;gap:8px}.tools button{border:1px solid #ffffff90;border-radius:12px;padding:10px 13px;background:#f4f3e9e8;color:#244431;font-weight:800;cursor:pointer;box-shadow:0 5px 18px #17332222}
+.guide{position:fixed;z-index:2;right:24px;bottom:65px;width:240px;padding:17px;border-radius:15px;color:#eaf0e3;background:#183a2bef;box-shadow:0 12px 32px #10251c45;font-size:11px}.guide b{color:#fff}.guide strong{font:700 13px Manrope}.guide p{margin:9px 0 0;color:#c5d3c0}.guide button{position:absolute;right:10px;top:7px;border:0;background:none;color:#d9e6d3;font-size:20px;cursor:pointer}
+.footer{position:fixed;z-index:2;bottom:20px;left:25px;padding:10px 14px;border-radius:30px;background:#183a2be8;color:#e3ebdd;font-size:10px;font-weight:600;box-shadow:0 5px 18px #10251c30}
+@media(max-width:650px){.top{top:14px;left:14px;gap:8px}.logo{width:38px;height:38px}.brand b{font-size:11px}.brand small{font-size:9px}.status{display:none}.card{top:70px;left:14px;width:min(280px,calc(100vw - 28px));padding:15px}.card h1{font-size:19px}.card p{font-size:10px}.stats{gap:15px;margin-top:13px;padding-top:11px}.stats b{font-size:16px}.stats span{font-size:8px}.tools{top:14px;right:14px;flex-direction:column}.tools button{padding:9px 11px}.guide{right:14px;bottom:60px;width:210px}.footer{left:14px;right:14px;bottom:14px;font-size:9px}}
+</style>
+</head>
+<body>
+<div id="scene"></div>
+<header class="top"><div class="logo">MV</div><div class="brand"><b>MUNDO VIVO</b><small>O começo de uma civilização</small></div><div class="status"><i></i>MUNDO EM FORMAÇÃO</div></header>
+<section class="card"><div class="eyebrow">CAPÍTULO 01 · O PRIMEIRO TERRITÓRIO</div><h1>Um mundo esperando por seus habitantes.</h1><p>A natureza já existe. As primeiras histórias começarão quando os jogadores criarem seus personagens.</p><div class="stats"><div><b>0</b><span>Habitantes</span></div><div><b>∞</b><span>Mundo aberto</span></div><div><b>01</b><span>Região descoberta</span></div></div></section>
+<div class="tools"><button id="reset">⌖ &nbsp;Centralizar</button><button id="help">? &nbsp;Ajuda</button></div>
+<aside class="guide" id="guide"><button id="close" aria-label="Fechar">×</button><strong>Explore o território</strong><p><b>Arraste</b> para mover o mapa</p><p><b>Roda do mouse</b> para aproximar ou afastar</p><p><b>Botão Centralizar</b> para voltar ao início</p></aside>
+<footer class="footer"><span class="live"></span>Protótipo do mapa · Próxima etapa: criar o primeiro habitante</footer>
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.177.0/build/three.module.js';
+import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.177.0/examples/jsm/controls/OrbitControls.js';
+
+const mount=document.getElementById('scene');
+const scene=new THREE.Scene(); scene.background=new THREE.Color('#b9d0bd'); scene.fog=new THREE.Fog('#b9d0bd',95,190);
+const camera=new THREE.PerspectiveCamera(38,innerWidth/innerHeight,.1,500);
+const startPos=new THREE.Vector3(48,55,58); camera.position.copy(startPos);
+const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
+renderer.setPixelRatio(Math.min(devicePixelRatio,1.7)); renderer.setSize(innerWidth,innerHeight);
+renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.outputColorSpace=THREE.SRGBColorSpace; mount.appendChild(renderer.domElement);
+const controls=new OrbitControls(camera,renderer.domElement); controls.target.set(0,0,0); controls.enableRotate=false; controls.enablePan=true; controls.enableDamping=true; controls.dampingFactor=.08; controls.screenSpacePanning=true; controls.minDistance=18; controls.maxDistance=105; controls.maxPolarAngle=Math.PI/2.12; controls.minPolarAngle=Math.PI/3.5;
+
+scene.add(new THREE.HemisphereLight('#dcebd5','#526b43',1.35));
+const sun=new THREE.DirectionalLight('#fff4d8',2.2); sun.position.set(-35,55,25); sun.castShadow=true; sun.shadow.mapSize.set(2048,2048); sun.shadow.camera.left=-75;sun.shadow.camera.right=75;sun.shadow.camera.top=75;sun.shadow.camera.bottom=-75;scene.add(sun);
+const ambient=new THREE.AmbientLight('#ffffff',.25);scene.add(ambient);
+
+const groundGeo=new THREE.PlaneGeometry(110,110,90,90);groundGeo.rotateX(-Math.PI/2);
+const pos=groundGeo.attributes.position;const colors=[];const col=new THREE.Color();
+for(let i=0;i<pos.count;i++){const x=pos.getX(i),z=pos.getZ(i);const v=(Math.sin(x*.18)+Math.cos(z*.16)+Math.sin((x+z)*.11))/3;col.setHSL(.285+v*.012,.34+v*.025,.34+v*.035);colors.push(col.r,col.g,col.b)}
+groundGeo.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));groundGeo.computeVertexNormals();
+const ground=new THREE.Mesh(groundGeo,new THREE.MeshStandardMaterial({vertexColors:true,roughness:1}));ground.receiveShadow=true;scene.add(ground);
+
+const under=new THREE.Mesh(new THREE.PlaneGeometry(500,500),new THREE.MeshStandardMaterial({color:'#263c2c'}));under.rotation.x=-Math.PI/2;under.position.y=-.09;scene.add(under);
+
+const riverPts=[[-52,.12,27],[-34,.12,18],[-20,.12,8],[-5,.12,3],[10,.12,-8],[28,.12,-18],[53,.12,-28]].map(p=>new THREE.Vector3(...p));
+const riverCurve=new THREE.CatmullRomCurve3(riverPts);
+const river=new THREE.Mesh(new THREE.TubeGeometry(riverCurve,130,2.7,12,false),new THREE.MeshStandardMaterial({color:'#4b9ca0',roughness:.27,metalness:.08}));
+river.scale.y=.16;river.receiveShadow=true;scene.add(river);
+
+const greens=['#477d45','#56894b','#3e713f','#63934e'];
+function tree(x,z,s,t){
+ const g=new THREE.Group();g.position.set(x,0,z);g.scale.setScalar(s);
+ const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.12,.19,1.45,7),new THREE.MeshStandardMaterial({color:'#79543a',roughness:1}));trunk.position.y=.72;trunk.castShadow=true;g.add(trunk);
+ const low=new THREE.Mesh(new THREE.ConeGeometry(.85,1.65,7),new THREE.MeshStandardMaterial({color:greens[t],roughness:.95}));low.position.y=1.55;low.castShadow=true;g.add(low);
+ const high=new THREE.Mesh(new THREE.ConeGeometry(.61,1.35,7),new THREE.MeshStandardMaterial({color:greens[(t+1)%4],roughness:.95}));high.position.y=2.15;high.castShadow=true;g.add(high);scene.add(g);
+}
+for(let i=0;i<210;i++){const x=Math.sin(i*127.1)*43,z=Math.cos(i*78.23)*43,riverX=-7+z*.75;if(Math.abs(x-riverX)<7|| (Math.abs(x)<8&&Math.abs(z)<7))continue;tree(x,z,.75+(Math.sin(i*19.3)+1)*.23,i%4)}
+for(let i=0;i<32;i++){const x=Math.sin(i*44.1)*42,z=Math.cos(i*18.7)*42,s=.35+(i%4)*.18;const rock=new THREE.Mesh(new THREE.DodecahedronGeometry(.8,0),new THREE.MeshStandardMaterial({color:'#858b7b',roughness:1}));rock.position.set(x,.42*s,z);rock.scale.setScalar(s);rock.rotation.set(.2,.5,.15);rock.castShadow=true;scene.add(rock)}
+
+function resize(){camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)}
+addEventListener('resize',resize);
+document.getElementById('reset').onclick=()=>{camera.position.copy(startPos);controls.target.set(0,0,0);controls.update()};
+const guide=document.getElementById('guide');document.getElementById('help').onclick=()=>guide.hidden=!guide.hidden;document.getElementById('close').onclick=()=>guide.hidden=true;
+function animate(){requestAnimationFrame(animate);controls.update();renderer.render(scene,camera)}animate();
+</script>
+</body></html>
