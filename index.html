@@ -66,7 +66,7 @@ let renderer;
 try{renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance',failIfMajorPerformanceCaveat:false});}
 catch(error){showBootError('Seu navegador não conseguiu inicializar o WebGL. Ative a aceleração de hardware ou abra o jogo em uma versão atualizada do Chrome/Edge.');throw error;}
 // Resolução maior sem deixar a GPU integrada carregar pixels em excesso.
-const renderScale=.9;renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.25));renderer.setSize(Math.max(240,Math.floor(innerWidth*renderScale)),Math.max(160,Math.floor(innerHeight*renderScale)),false);
+let renderScale=.9;renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.25));renderer.setSize(Math.max(240,Math.floor(innerWidth*renderScale)),Math.max(160,Math.floor(innerHeight*renderScale)),false);
 renderer.domElement.style.width='100%';renderer.domElement.style.height='100%';renderer.domElement.tabIndex=0;renderer.domElement.setAttribute('aria-label','Mundo 3D interativo. Arraste para explorar e clique nos animais.');
 renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.12;mount.appendChild(renderer.domElement);
@@ -404,7 +404,7 @@ function makeAnimal(kind,index){
  g.scale.setScalar(size);
  const blobShadow=new THREE.Mesh(new THREE.CircleGeometry(isRabbit?.34:isBoar?.62:.58,16),new THREE.MeshBasicMaterial({color:'#243326',transparent:true,opacity:.2,depthWrite:false,side:THREE.DoubleSide}));
  blobShadow.rotation.x=-Math.PI/2;blobShadow.position.y=.025;g.add(blobShadow);
- g.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true}});
+ g.traverse(o=>{if(o.isMesh){o.castShadow=o===body;o.receiveShadow=false}});
  scene.add(g);
  const hpMax=isRabbit?38+Math.round(size*10):isDeer?115+Math.round(size*35):155+Math.round(size*45);
  const animal={group:g,body,headRig,legs,ears,tailRig,extras,kind,target:new THREE.Vector3(),state:'idle',stateTime:2+random()*5,
@@ -464,7 +464,7 @@ function makeWolf(index,pack){
  g.position.set(Math.cos(angle)*(95+index*4),0,Math.sin(angle)*(95+index*4));
  const sizeFactor=.88+random()*.62;g.scale.setScalar(sizeFactor);scene.add(g);
  const wolfInfo={name:'Lobo-cinzento',description:'Predador social que patrulha em alcateia, fareja presas e pode iniciar uma perseguição.',details:'Mamífero · Carnívoro · Predador'};
- g.traverse(o=>{if(o.isMesh)o.userData.animalInfo=wolfInfo});
+ g.traverse(o=>{if(o.isMesh){o.userData.animalInfo=wolfInfo;o.castShadow=false;o.receiveShadow=false;}});
  predators.push({group:g,headRig,legs,tail,pack,target:null,state:'patrol',heading:angle+Math.PI,
   speed:3.25+random()*.35,phase:random()*6,hunger:45+random()*30,decision:2+random()*3,sizeFactor,
   patrolTarget:new THREE.Vector3(g.position.x,0,g.position.z),cooldown:random()*2,biteCooldown:0,feedUntil:0});
@@ -525,10 +525,12 @@ renderer.domElement.addEventListener('pointerup',e=>{
 });
 document.getElementById('animalInfoClose').onclick=()=>animalInfoPanel.hidden=true;
 const clock=new THREE.Clock();
-const herbivoreCountEl=document.getElementById('herbivoreCount'),wolfCountEl=document.getElementById('wolfCount');let statsTimer=0;
+const herbivoreCountEl=document.getElementById('herbivoreCount'),wolfCountEl=document.getElementById('wolfCount');let statsTimer=0,fpsSample=0,fpsFrames=0;
 function animate(){
  requestAnimationFrame(animate);
  const delta=Math.min(clock.getDelta(),.05),t=clock.elapsedTime;
+ // Ajusta a resolução quando a GPU está sobrecarregada, priorizando fluidez.
+ fpsSample+=delta;fpsFrames++;if(fpsFrames>=90){const average=fpsSample/fpsFrames;fpsSample=0;fpsFrames=0;if(average>.038&&renderScale>.62){renderScale=Math.max(.62,renderScale-.08);resize();}else if(average<.024&&renderScale<.9){renderScale=Math.min(.9,renderScale+.03);resize();}}
  // Variação suave da luz ao longo do tempo, sem escurecer excessivamente a cena.
  const daylight=.82+.18*(.5+.5*Math.sin(t*.018));
  const dusk=(1-daylight)*.48;scene.background.copy(daySky).lerp(eveningSky,dusk);scene.fog.color.copy(scene.background);
