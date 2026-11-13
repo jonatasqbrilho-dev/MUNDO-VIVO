@@ -29,7 +29,7 @@ canvas{display:block}
 <header class="top"><div class="logo">MV</div><div class="brand"><b>MUNDO VIVO</b><small>O começo de uma civilização</small></div><div class="status"><i></i>MUNDO EM FORMAÇÃO</div></header>
 <section class="card"><div class="eyebrow">CAPÍTULO 01 · O PRIMEIRO TERRITÓRIO</div><h1>Um mundo esperando por seus habitantes.</h1><p>Uma floresta viva, cheia de animais selvagens. Explore o território e descubra a fauna que habita este mundo.</p><div class="stats"><div><b>0</b><span>Habitantes</span></div><div><b>∞</b><span>Mundo aberto</span></div><div><b>01</b><span>Região descoberta</span></div></div></section>
 <div class="tools"><button id="reset">⌖ &nbsp;Centralizar</button><button id="help">? &nbsp;Ajuda</button></div>
-<aside class="guide" id="guide"><button id="close" aria-label="Fechar">×</button><strong>Explore o território</strong><p><b>Arraste com o botão esquerdo</b> para mover o mapa</p><p><b>Roda do mouse</b> para aproximar ou afastar</p><p><b>Botão direito</b> também move o mapa</p><p><b>Botão Centralizar</b> para voltar ao início</p><p><b>Fauna selvagem:</b> cervos, javalis e coelhos circulam pelo mapa</p></aside>
+<aside class="guide" id="guide"><button id="close" aria-label="Fechar">×</button><strong>Explore o território</strong><p><b>Arraste com o botão esquerdo</b> para mover o mapa</p><p><b>Roda do mouse</b> para aproximar ou afastar</p><p><b>Botão direito</b> também move o mapa</p><p><b>Botão Centralizar</b> para voltar ao início</p><p><b>Fauna selvagem:</b> cervos, javalis e coelhos fogem de duas alcateias de lobos</p></aside>
 <footer class="footer"><span class="live"></span>Protótipo do mapa · Próxima etapa: criar o primeiro habitante</footer>
 <script type="importmap">
 {
@@ -110,6 +110,7 @@ for(let i=0;i<190;i++){const x=(random()-.5)*480,z=(random()-.5)*480,riverX=25-z
 
 // ANIMAIS SELVAGENS: locomoção com estados, aceleração e movimentos por espécie.
 const wildlife=[];
+const predators=[];
 const animalMats={
  fur:new THREE.MeshStandardMaterial({color:'#a66f3f',roughness:1}),
  dark:new THREE.MeshStandardMaterial({color:'#49372b',roughness:1}),
@@ -175,6 +176,52 @@ for(let i=0;i<28;i++)makeAnimal('cervo',i);
 for(let i=0;i<22;i++)makeAnimal('javali',i);
 for(let i=0;i<34;i++)makeAnimal('coelho',i);
 
+// PREDADORES — ALCATEIAS: patrulha, rastreamento, perseguição, captura e descanso.
+const wolfMats={
+ fur:new THREE.MeshStandardMaterial({color:'#77766e',roughness:1}),
+ dark:new THREE.MeshStandardMaterial({color:'#393b38',roughness:1}),
+ light:new THREE.MeshStandardMaterial({color:'#b9b4a5',roughness:1})
+};
+function makeWolf(index,pack){
+ const g=new THREE.Group();
+ const body=new THREE.Mesh(bodyGeo,wolfMats.fur);body.scale.set(.78,.48,.38);body.position.y=.72;g.add(body);
+ const chest=new THREE.Mesh(bodyGeo,wolfMats.dark);chest.scale.set(.3,.4,.36);chest.position.set(.34,.69,0);g.add(chest);
+ const headRig=new THREE.Group();headRig.position.set(.57,.91,0);g.add(headRig);
+ const head=new THREE.Mesh(headGeo,wolfMats.fur);head.scale.set(.29,.25,.25);head.position.x=.08;headRig.add(head);
+ const muzzle=new THREE.Mesh(new THREE.ConeGeometry(.14,.38,7),wolfMats.dark);muzzle.rotation.z=-Math.PI/2;muzzle.position.set(.36,-.07,0);headRig.add(muzzle);
+ for(const side of [-1,1]){const ear=new THREE.Mesh(new THREE.ConeGeometry(.09,.25,5),wolfMats.dark);ear.position.set(.02,.25,side*.16);headRig.add(ear)}
+ const legs=[];
+ for(const x of [-.4,.38])for(const z of [-.22,.22]){
+  const pivot=new THREE.Group();pivot.position.set(x,.52,z);
+  const leg=new THREE.Mesh(new THREE.CylinderGeometry(.08,.095,.56,6),wolfMats.dark);leg.position.y=-.27;pivot.add(leg);g.add(pivot);legs.push(pivot);
+ }
+ const tail=new THREE.Mesh(new THREE.CapsuleGeometry(.09,.42,4,6),wolfMats.dark);tail.position.set(-.76,.68,0);tail.rotation.z=-.8;g.add(tail);
+ const angle=pack===0?-.65:Math.PI-.65;
+ g.position.set(Math.cos(angle)*(95+index*4),0,Math.sin(angle)*(95+index*4));
+ g.scale.setScalar(.9+random()*.12);scene.add(g);
+ predators.push({group:g,headRig,legs,pack,target:null,state:'patrol',heading:angle+Math.PI,
+  speed:3.25+random()*.35,phase:random()*6,hunger:45+random()*30,decision:2+random()*3,
+  patrolTarget:new THREE.Vector3(g.position.x,0,g.position.z),cooldown:random()*8});
+}
+for(let i=0;i<3;i++)makeWolf(i,0);
+for(let i=0;i<3;i++)makeWolf(i+3,1);
+
+function chooseWolfPrey(w){
+ // Coelhos são presas fáceis; cervos exigem perseguição. Javalis podem ferir o predador,
+ // por isso só entram na seleção quando o lobo está muito faminto.
+ let best=null,bestScore=Infinity;
+ for(const a of wildlife){
+  if(a.state==='dead'||!a.group.visible)continue;
+  if(a.kind==='javali'&&w.hunger<88)continue;
+  const d=w.group.position.distanceTo(a.group.position);
+  const max=a.kind==='coelho'?48:a.kind==='cervo'?58:28;
+  if(d>max)continue;
+  const score=d+(a.kind==='coelho'?0:a.kind==='cervo'?5:24)+random()*5;
+  if(score<bestScore){best=a;bestScore=score}
+ }
+ return best;
+}
+
 function resize(){camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)}
 addEventListener('resize',resize);
 document.getElementById('reset').onclick=()=>{camera.position.copy(startPos);controls.target.set(0,0,0);controls.update()};
@@ -184,19 +231,42 @@ function animate(){
  requestAnimationFrame(animate);
  const delta=Math.min(clock.getDelta(),.05),t=clock.elapsedTime;
  for(const a of wildlife){
+  if(a.state==='dead'){
+   if(t>=a.deadUntil){
+    const ang=random()*Math.PI*2,rad=55+random()*170;
+    a.group.position.set(Math.cos(ang)*rad,0,Math.sin(ang)*rad);
+    a.group.visible=true;a.state='idle';a.stateTime=2+random()*4;
+    pickAnimalTarget(a);
+   }
+   continue;
+  }
+  // Presas percebem o cheiro e a aproximação dos lobos antes da perseguição.
+  let threat=null,threatDist=Infinity;
+  for(const w of predators){
+   const d=a.group.position.distanceTo(w.group.position);
+   if(d<threatDist){threat=w;threatDist=d}
+  }
+  if(threat&&threatDist<(a.kind==='javali'?12:23)&&a.state!=='flee'){
+   a.state='flee';a.stateTime=3.5+random()*2;
+   const dx=a.group.position.x-threat.group.position.x,dz=a.group.position.z-threat.group.position.z;
+   const len=Math.max(1,Math.hypot(dx,dz));
+   a.target.set(THREE.MathUtils.clamp(a.group.position.x+dx/len*48,-235,235),0,
+    THREE.MathUtils.clamp(a.group.position.z+dz/len*48,-235,235));
+  }
   a.stateTime-=delta;
   if(a.stateTime<=0){
-   if(a.state==='walk'){a.state=random()<.72?'graze':'idle';a.stateTime=3+random()*8}
+   if(a.state==='flee'){a.state='idle';a.stateTime=2+random()*3;pickAnimalTarget(a)}
+   else if(a.state==='walk'){a.state=random()<.72?'graze':'idle';a.stateTime=3+random()*8}
    else pickAnimalTarget(a);
   }
   const dx=a.target.x-a.group.position.x,dz=a.target.z-a.group.position.z;
   const distance=Math.hypot(dx,dz);
-  const moving=a.state==='walk'&&distance>.8;
+  const moving=(a.state==='walk'||a.state==='flee')&&distance>.8;
   if(moving){
    const desired=Math.atan2(-dz,dx);
    let turn=THREE.MathUtils.euclideanModulo(desired-a.heading+Math.PI,Math.PI*2)-Math.PI;
    a.heading+=turn*Math.min(1,delta*(a.kind==='coelho'?5:2.8));
-   const speed=a.speed*a.speedFactor*Math.min(1,distance/3);
+   const speed=a.speed*a.speedFactor*(a.state==='flee'?2.05:1)*Math.min(1,distance/3);
    a.group.position.x+=Math.cos(a.heading)*speed*delta;
    a.group.position.z-=Math.sin(a.heading)*speed*delta;
    a.gait+=delta*(a.kind==='coelho'?10:a.kind==='cervo'?8:5.5)*a.speedFactor;
@@ -218,6 +288,58 @@ function animate(){
   a.headRig.rotation.z=THREE.MathUtils.damp(a.headRig.rotation.z,graze?.42+Math.sin(t*2+a.phase)*.08:Math.sin(t*1.3+a.phase)*.035,3,delta);
   a.body.rotation.z=THREE.MathUtils.damp(a.body.rotation.z,moving?Math.sin(a.gait)*.025:Math.sin(t*1.5+a.phase)*.012,4,delta);
   if(a.kind==='javali'&&graze)a.headRig.rotation.x=Math.sin(t*3+a.phase)*.08;
+ }
+ // IA dos lobos: patrulham, farejam, escolhem alvo e alternam perseguição com descanso.
+ for(const w of predators){
+  w.cooldown=Math.max(0,w.cooldown-delta);w.hunger=Math.min(100,w.hunger+delta*.22);
+  w.decision-=delta;
+  if(w.decision<=0){
+   if(!w.target||w.target.state==='dead'||!w.target.group.visible){
+    w.target=chooseWolfPrey(w);
+    w.state=w.target?'stalk':'patrol';
+   }else if(w.state==='stalk')w.state='chase';
+   w.decision=w.state==='chase'?.65:2.2+random()*2.2;
+  }
+  if(w.target&&w.target.state!=='dead'&&w.target.group.visible){
+   const prey=w.target.group.position;
+   const dx=prey.x-w.group.position.x,dz=prey.z-w.group.position.z;
+   const d=Math.hypot(dx,dz);
+   if(d>92||w.hunger<12){w.target=null;w.state='patrol';w.decision=2}
+   else if(d<1.9&&w.cooldown<=0){
+    // Captura sem violência gráfica; a população se recompõe após um intervalo.
+    w.target.state='dead';w.target.deadUntil=t+85;w.target.group.visible=false;
+    w.hunger=Math.max(0,w.hunger-58);w.cooldown=12;w.target=null;w.state='rest';w.decision=5+random()*4;
+   }else{
+    const desired=Math.atan2(-dz,dx);
+    let turn=THREE.MathUtils.euclideanModulo(desired-w.heading+Math.PI,Math.PI*2)-Math.PI;
+    w.heading+=turn*Math.min(1,delta*(w.state==='chase'?3.8:2.2));
+    const pace=w.state==='chase'?w.speed*1.65:w.speed*.72;
+    w.group.position.x+=Math.cos(w.heading)*pace*delta;
+    w.group.position.z-=Math.sin(w.heading)*pace*delta;
+    w.headRig.rotation.z=THREE.MathUtils.damp(w.headRig.rotation.z,w.state==='stalk'?.16:0,3,delta);
+   }
+  }else{
+   if(w.state==='rest'){
+    if(w.decision<=0){w.state='patrol';w.decision=1}
+   }else{
+    const dx=w.patrolTarget.x-w.group.position.x,dz=w.patrolTarget.z-w.group.position.z;
+    if(Math.hypot(dx,dz)<3||w.decision<=0){
+     const ang=random()*Math.PI*2,rad=18+random()*35;
+     w.patrolTarget.set(THREE.MathUtils.clamp(w.group.position.x+Math.cos(ang)*rad,-225,225),0,
+      THREE.MathUtils.clamp(w.group.position.z+Math.sin(ang)*rad,-225,225));
+     w.decision=4+random()*6;
+    }
+    const desired=Math.atan2(-dz,dx);
+    let turn=THREE.MathUtils.euclideanModulo(desired-w.heading+Math.PI,Math.PI*2)-Math.PI;
+    w.heading+=turn*Math.min(1,delta*2.4);
+    w.group.position.x+=Math.cos(w.heading)*w.speed*.48*delta;
+    w.group.position.z-=Math.sin(w.heading)*w.speed*.48*delta;
+   }
+  }
+  w.group.rotation.y=w.heading;
+  const running=w.state==='chase';
+  w.phase+=delta*(running?12:6);
+  for(let j=0;j<w.legs.length;j++)w.legs[j].rotation.z=Math.sin(w.phase+(j===0||j===3?0:Math.PI))*(running?.48:.2);
  }
  controls.update();renderer.render(scene,camera);
 }
