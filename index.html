@@ -28,7 +28,7 @@ canvas{display:block}
 <body>
 <div id="scene"></div>
 <header class="top"><div class="logo">MV</div><div class="brand"><b>MUNDO VIVO</b><small>O começo de uma civilização</small></div><div class="status"><i></i>MUNDO EM FORMAÇÃO</div></header>
-<section class="card"><div class="eyebrow">CAPÍTULO 01 · O PRIMEIRO TERRITÓRIO</div><h1>Um mundo esperando por seus habitantes.</h1><p>Uma floresta viva: animais com movimentos mais naturais, lobos caçando, peixes nadando no rio e pássaros cruzando o céu.</p><div class="stats"><div><b>0</b><span>Habitantes</span></div><div><b>∞</b><span>Mundo aberto</span></div><div><b>06</b><span>Lobos predadores</span></div></div></section>
+<section class="card"><div class="eyebrow">CAPÍTULO 01 · O PRIMEIRO TERRITÓRIO</div><h1>Um mundo esperando por seus habitantes.</h1><p>Uma floresta viva: animais com movimentos mais naturais, lobos caçando, peixes nadando no rio e pássaros cruzando o céu.</p><div class="stats"><div><b>84</b><span>Herbívoros</span></div><div><b>500×500</b><span>Território</span></div><div><b>06</b><span>Lobos predadores</span></div></div></section>
 <div class="tools"><button id="reset">⌖ &nbsp;Centralizar</button><button id="help">? &nbsp;Ajuda</button></div>
 <aside class="guide" id="guide"><button id="close" aria-label="Fechar">×</button><strong>Explore o território</strong><p><b>Arraste com o botão esquerdo</b> para mover o mapa</p><p><b>Roda do mouse</b> para aproximar ou afastar</p><p><b>Botão direito</b> também move o mapa</p><p><b>Botão Centralizar</b> para voltar ao início</p><p><b>Fauna:</b> animais terrestres, peixes no rio e pássaros voando sobre a floresta</p></aside>
 <section id="animalInfo" class="animal-info" hidden aria-live="polite"><button id="animalInfoClose" aria-label="Fechar">×</button><div class="eyebrow">ANIMAL OBSERVADO</div><h2 id="animalName">Animal</h2><p id="animalDescription"></p><small id="animalDetails"></small></section>
@@ -75,7 +75,7 @@ const riverCurve=new THREE.CatmullRomCurve3(riverPts);
 const riverSamples=Array.from({length:241},(_,i)=>riverCurve.getPointAt(i/240));
 function distanceToRiver(x,z){let best=Infinity;for(const p of riverSamples){const dx=x-p.x,dz=z-p.z,d=dx*dx+dz*dz;if(d<best)best=d}return Math.sqrt(best)}
 const riverGeo=new THREE.TubeGeometry(riverCurve,260,8,14,false);
-const waterMat=new THREE.MeshStandardMaterial({color:'#398f9e',roughness:.19,metalness:.12});
+const waterMat=new THREE.MeshStandardMaterial({color:'#398f9e',roughness:.19,metalness:.12,transparent:true,opacity:.68,depthWrite:false,side:THREE.DoubleSide});
 waterMat.onBeforeCompile=(shader)=>{
  shader.uniforms.uRiverTime={value:0};
  shader.vertexShader=shader.vertexShader.replace('#include <common>','#include <common>\nuniform float uRiverTime;');
@@ -85,7 +85,7 @@ waterMat.onBeforeCompile=(shader)=>{
  waterMat.userData.shader=shader;
 };
 const river=new THREE.Mesh(riverGeo,waterMat);
-river.scale.y=.16;river.receiveShadow=true;scene.add(river);
+river.scale.y=.035;river.receiveShadow=true;scene.add(river);
 // Reflexos e pequenas ondulações claras ajudam a leitura do fluxo da água.
 const rippleMat=new THREE.MeshStandardMaterial({color:'#a7e0d9',transparent:true,opacity:.42,roughness:.22,metalness:.08});
 const ripples=[];
@@ -102,7 +102,7 @@ for(let i=0;i<18;i++){
  const torso=new THREE.Mesh(new THREE.SphereGeometry(1,9,7),m);torso.scale.set(.52,.19,.16);g.add(torso);
  const tail=new THREE.Mesh(new THREE.ConeGeometry(.2,.35,5),m);tail.rotation.z=-Math.PI/2;tail.position.x=-.65;g.add(tail);
  const fin=new THREE.Mesh(new THREE.ConeGeometry(.11,.22,5),m);fin.rotation.z=Math.PI/2;fin.position.set(-.05,.18,0);g.add(fin);
- const u=(i+.4)/18;g.position.copy(riverCurve.getPointAt(u));g.position.y=.55+(i%3)*.13;
+ const u=(i+.4)/18;g.position.copy(riverCurve.getPointAt(u));g.position.y=.20+(i%3)*.055;
  scene.add(g);fish.push({group:g,tail,u,speed:.009+random()*.009,phase:random()*6,depth:.5+(i%4)*.12});
 }
 // Pássaros em voo: asas articuladas e trajetórias circulares largas sobre a copa das árvores.
@@ -178,7 +178,7 @@ function pickAnimalTarget(a){
   x=THREE.MathUtils.clamp(a.group.position.x+(random()-.5)*85,-235,235);
   z=THREE.MathUtils.clamp(a.group.position.z+(random()-.5)*85,-235,235);
   tries++;
- }while(Math.abs(x-(25-z*.78))<27&&tries<12);
+ }while((distanceToRiver(x,z)<18||(Math.abs(x)<31&&Math.abs(z)<31))&&tries<24);
  a.target.set(x,0,z);
  a.state=random()<(a.kind==='coelho'?.72:.58)?'walk':'graze';
  a.stateTime=a.state==='walk'?5+random()*12:3+random()*9;
@@ -237,7 +237,12 @@ function makeAnimal(kind,index){
  const angle=random()*Math.PI*2,radius=35+random()*190;
  g.position.set(Math.cos(angle)*radius,0,Math.sin(angle)*radius);
  const size=isDeer?.95+random()*.35:isBoar?.9+random()*.25:.55+random()*.25;
- g.scale.setScalar(size);scene.add(g);
+ g.scale.setScalar(size);
+ // Sombra suave acompanha o animal e reduz o efeito visual de flutuação.
+ const blobShadow=new THREE.Mesh(new THREE.CircleGeometry(isRabbit?.34:isBoar?.62:.58,16),new THREE.MeshBasicMaterial({color:'#243326',transparent:true,opacity:.20,depthWrite:false,side:THREE.DoubleSide}));
+ blobShadow.rotation.x=-Math.PI/2;blobShadow.position.y=.025;g.add(blobShadow);
+ g.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true}});
+ scene.add(g);
  const animal={group:g,body,headRig,legs,extras,kind,target:new THREE.Vector3(),state:'idle',stateTime:2+random()*5,
   speed:isDeer?2.1:isBoar?1.35:2.6,speedFactor:1,heading:random()*Math.PI*2,phase:random()*Math.PI*2,
   gait:0,homeX:g.position.x,homeZ:g.position.z};
@@ -311,7 +316,17 @@ renderer.domElement.addEventListener('pointerup',e=>{
  if(!pointerStart)return;const moved=Math.hypot(e.clientX-pointerStart.x,e.clientY-pointerStart.y);pointerStart=null;if(moved>5)return;
  const rect=renderer.domElement.getBoundingClientRect();pointer.x=((e.clientX-rect.left)/rect.width)*2-1;pointer.y=-((e.clientY-rect.top)/rect.height)*2+1;
  raycaster.setFromCamera(pointer,camera);const hits=raycaster.intersectObjects([...wildlife.map(a=>a.group),...predators.map(w=>w.group)],true);
- const hit=hits.find(h=>h.object.userData.animalInfo);
+ // Raycaster pode retornar filhos de grupos invisíveis; valida a cadeia de visibilidade
+ // e o estado lógico antes de permitir a seleção.
+ function isSelectable(object){
+  let node=object;
+  while(node&&node!==scene){if(!node.visible)return false;node=node.parent;}
+  const prey=wildlife.find(a=>{let n=object;while(n){if(n===a.group)return true;n=n.parent;}return false;});
+  if(prey)return prey.state!=='dead'&&prey.group.visible;
+  const wolf=predators.find(w=>{let n=object;while(n){if(n===w.group)return true;n=n.parent;}return false;});
+  return !!wolf&&wolf.group.visible;
+ }
+ const hit=hits.find(h=>h.object.userData.animalInfo&&isSelectable(h.object));
  if(hit){const info=hit.object.userData.animalInfo;animalName.textContent=info.name;animalDescription.textContent=info.description;animalDetails.textContent=info.details;animalInfoPanel.hidden=false;}
  else animalInfoPanel.hidden=true;
 });
@@ -337,9 +352,11 @@ function animate(){
   b.angle+=delta*b.speed;
   const x=b.centerX+Math.cos(b.angle)*b.radius,z=b.centerZ+Math.sin(b.angle)*b.radius*.72;
   b.group.position.set(x,b.height+Math.sin(t*1.8+b.phase)*2,z);
-  b.group.rotation.y=-b.angle+Math.PI/2;
+  const vx=-Math.sin(b.angle),vz=Math.cos(b.angle)*.72;
+  b.group.rotation.y=Math.atan2(-vz,vx);
   const flap=Math.sin(t*10+b.phase)*.72;
-  b.wings[0].rotation.z=flap;b.wings[1].rotation.z=-flap;
+  // As asas se estendem no eixo Z; a rotação X faz o movimento de bater asas.
+  b.wings[0].rotation.x=flap;b.wings[1].rotation.x=-flap;
  }
  for(const a of wildlife){
   if(a.state==='dead'){
@@ -377,7 +394,8 @@ function animate(){
    const desired=Math.atan2(-dz,dx);
    let turn=THREE.MathUtils.euclideanModulo(desired-a.heading+Math.PI,Math.PI*2)-Math.PI;
    a.heading+=turn*Math.min(1,delta*(a.kind==='coelho'?5:2.8));
-   const speed=a.speed*a.speedFactor*(a.state==='flee'?2.05:1)*Math.min(1,distance/3);
+   const fleeBoost=a.kind==='javali'?4.2:a.kind==='cervo'?2.8:2.2;
+   const speed=a.speed*a.speedFactor*(a.state==='flee'?fleeBoost:1)*Math.min(1,distance/3);
    a.group.position.x+=Math.cos(a.heading)*speed*delta;
    a.group.position.z-=Math.sin(a.heading)*speed*delta;
    a.gait+=delta*(a.kind==='coelho'?10:a.kind==='cervo'?8:5.5)*a.speedFactor;
