@@ -27,9 +27,9 @@ canvas{display:block}
 <body>
 <div id="scene"></div>
 <header class="top"><div class="logo">MV</div><div class="brand"><b>MUNDO VIVO</b><small>O começo de uma civilização</small></div><div class="status"><i></i>MUNDO EM FORMAÇÃO</div></header>
-<section class="card"><div class="eyebrow">CAPÍTULO 01 · O PRIMEIRO TERRITÓRIO</div><h1>Um mundo esperando por seus habitantes.</h1><p>Uma floresta viva com cervos, javalis e coelhos, mas também com duas alcateias de lobos que patrulham, caçam e mantêm a natureza em movimento.</p><div class="stats"><div><b>0</b><span>Habitantes</span></div><div><b>∞</b><span>Mundo aberto</span></div><div><b>06</b><span>Lobos predadores</span></div></div></section>
+<section class="card"><div class="eyebrow">CAPÍTULO 01 · O PRIMEIRO TERRITÓRIO</div><h1>Um mundo esperando por seus habitantes.</h1><p>Uma floresta viva: animais com movimentos mais naturais, lobos caçando, peixes nadando no rio e pássaros cruzando o céu.</p><div class="stats"><div><b>0</b><span>Habitantes</span></div><div><b>∞</b><span>Mundo aberto</span></div><div><b>06</b><span>Lobos predadores</span></div></div></section>
 <div class="tools"><button id="reset">⌖ &nbsp;Centralizar</button><button id="help">? &nbsp;Ajuda</button></div>
-<aside class="guide" id="guide"><button id="close" aria-label="Fechar">×</button><strong>Explore o território</strong><p><b>Arraste com o botão esquerdo</b> para mover o mapa</p><p><b>Roda do mouse</b> para aproximar ou afastar</p><p><b>Botão direito</b> também move o mapa</p><p><b>Botão Centralizar</b> para voltar ao início</p><p><b>Fauna selvagem:</b> cervos, javalis e coelhos fogem de duas alcateias de lobos</p></aside>
+<aside class="guide" id="guide"><button id="close" aria-label="Fechar">×</button><strong>Explore o território</strong><p><b>Arraste com o botão esquerdo</b> para mover o mapa</p><p><b>Roda do mouse</b> para aproximar ou afastar</p><p><b>Botão direito</b> também move o mapa</p><p><b>Botão Centralizar</b> para voltar ao início</p><p><b>Fauna:</b> animais terrestres, peixes no rio e pássaros voando sobre a floresta</p></aside>
 <footer class="footer"><span class="live"></span>Protótipo do mapa · Próxima etapa: criar o primeiro habitante</footer>
 <script type="importmap">
 {
@@ -67,8 +67,54 @@ const under=new THREE.Mesh(new THREE.PlaneGeometry(1100,1100),new THREE.MeshStan
 
 const riverPts=[[-260,.12,130],[-180,.12,95],[-100,.12,45],[-20,.12,10],[70,.12,-35],[160,.12,-95],[260,.12,-145]].map(p=>new THREE.Vector3(...p));
 const riverCurve=new THREE.CatmullRomCurve3(riverPts);
-const river=new THREE.Mesh(new THREE.TubeGeometry(riverCurve,260,8,14,false),new THREE.MeshStandardMaterial({color:'#4b9ca0',roughness:.27,metalness:.08}));
+const riverGeo=new THREE.TubeGeometry(riverCurve,260,8,14,false);
+const waterMat=new THREE.MeshStandardMaterial({color:'#398f9e',roughness:.19,metalness:.12});
+waterMat.onBeforeCompile=(shader)=>{
+ shader.uniforms.uRiverTime={value:0};
+ shader.vertexShader=shader.vertexShader.replace('#include <common>','#include <common>\nuniform float uRiverTime;');
+ shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
+ transformed.y += sin(position.x*0.24 + position.z*0.18 + uRiverTime*2.2)*0.045
+   + cos(position.x*0.11 - position.z*0.31 + uRiverTime*1.5)*0.035;`);
+ waterMat.userData.shader=shader;
+};
+const river=new THREE.Mesh(riverGeo,waterMat);
 river.scale.y=.16;river.receiveShadow=true;scene.add(river);
+// Reflexos e pequenas ondulações claras ajudam a leitura do fluxo da água.
+const rippleMat=new THREE.MeshStandardMaterial({color:'#a7e0d9',transparent:true,opacity:.42,roughness:.22,metalness:.08});
+const ripples=[];
+for(let i=0;i<22;i++){
+ const u=(i/22+random())%1,p=riverCurve.getPointAt(u);
+ const ring=new THREE.Mesh(new THREE.TorusGeometry(.35+random()*.45,.025,4,14),rippleMat);
+ ring.rotation.x=Math.PI/2;ring.position.set(p.x,.36,p.z);ring.userData={u,speed:.018+random()*.018,phase:random()*6};scene.add(ring);ripples.push(ring);
+}
+// Peixes pequenos nadam sob a superfície, seguindo o curso do rio.
+const fish=[];
+const fishMats=[new THREE.MeshStandardMaterial({color:'#d6b66e',metalness:.18,roughness:.35}),new THREE.MeshStandardMaterial({color:'#6eabb1',metalness:.2,roughness:.32}),new THREE.MeshStandardMaterial({color:'#d18c58',metalness:.12,roughness:.4})];
+for(let i=0;i<18;i++){
+ const g=new THREE.Group(),m=fishMats[i%fishMats.length];
+ const torso=new THREE.Mesh(new THREE.SphereGeometry(1,9,7),m);torso.scale.set(.52,.19,.16);g.add(torso);
+ const tail=new THREE.Mesh(new THREE.ConeGeometry(.2,.35,5),m);tail.rotation.z=-Math.PI/2;tail.position.x=-.65;g.add(tail);
+ const fin=new THREE.Mesh(new THREE.ConeGeometry(.11,.22,5),m);fin.rotation.z=Math.PI/2;fin.position.set(-.05,.18,0);g.add(fin);
+ const u=(i+.4)/18;g.position.copy(riverCurve.getPointAt(u));g.position.y=.55+(i%3)*.13;
+ scene.add(g);fish.push({group:g,tail,u,speed:.009+random()*.009,phase:random()*6,depth:.5+(i%4)*.12});
+}
+// Pássaros em voo: asas articuladas e trajetórias circulares largas sobre a copa das árvores.
+const birds=[];
+const birdMat=new THREE.MeshStandardMaterial({color:'#343c35',roughness:.8});
+for(let i=0;i<14;i++){
+ const g=new THREE.Group();
+ const torso=new THREE.Mesh(new THREE.SphereGeometry(1,8,6),birdMat);torso.scale.set(.36,.15,.17);g.add(torso);
+ const head=new THREE.Mesh(new THREE.SphereGeometry(.16,7,6),birdMat);head.position.x=.3;g.add(head);
+ const beak=new THREE.Mesh(new THREE.ConeGeometry(.055,.2,5),new THREE.MeshStandardMaterial({color:'#bd985f'}));beak.rotation.z=-Math.PI/2;beak.position.set(.48,-.01,0);g.add(beak);
+ const wings=[];
+ for(const side of [-1,1]){
+  const pivot=new THREE.Group();pivot.position.set(0,.04,side*.1);
+  const wing=new THREE.Mesh(new THREE.BoxGeometry(.55,.045,.3),birdMat);wing.position.set(-.03,0,side*.16);wing.rotation.y=side*.18;pivot.add(wing);g.add(pivot);wings.push(pivot);
+ }
+ scene.add(g);birds.push({group:g,wings,angle:random()*Math.PI*2,radius:45+random()*95,
+  centerX:(random()-.5)*180,centerZ:(random()-.5)*180,height:15+random()*18,
+  speed:.12+random()*.12,phase:random()*6});
+}
 
 // FLORESTA DENSA: árvores instanciadas para manter o desempenho mesmo em grande quantidade.
 const greens=['#477d45','#56894b','#3e713f','#63934e','#35683a','#719b55'];
@@ -137,18 +183,39 @@ function makeAnimal(kind,index){
  const g=new THREE.Group();
  const isDeer=kind==='cervo',isBoar=kind==='javali',isRabbit=kind==='coelho';
  const mat=isDeer?animalMats.fur:isBoar?animalMats.boar:animalMats.rabbit;
+ // Silhuetas anatômicas: tronco, peito, garupa, pescoço e focinho em proporções próprias.
  const body=new THREE.Mesh(bodyGeo,mat);
- body.scale.set(isBoar?.72:isRabbit?.48:.62,isBoar?.48:isRabbit?.38:.42,isBoar?.34:isRabbit?.32:.3);
- body.position.y=isBoar?.58:isRabbit?.48:.62;g.add(body);
- const headRig=new THREE.Group();headRig.position.set(isRabbit?.32:.43,isRabbit?.66:.82,0);g.add(headRig);
+ body.scale.set(isBoar?.78:isRabbit?.43:.68,isBoar?.43:isRabbit?.34:.39,isBoar?.39:isRabbit?.29:.31);
+ body.position.set(-.02,isBoar?.57:isRabbit?.48:.68,0);g.add(body);
+ const rump=new THREE.Mesh(bodyGeo,mat);
+ rump.scale.set(isBoar?.34:isRabbit?.25:.31,isBoar?.34:isRabbit?.29:.34,isBoar?.38:isRabbit?.3:.32);
+ rump.position.set(-.39,isBoar?.58:isRabbit?.49:.67,0);g.add(rump);
+ const chest=new THREE.Mesh(bodyGeo,mat);
+ chest.scale.set(isBoar?.3:isRabbit?.23:.28,isBoar?.42:isRabbit?.33:.42,isBoar?.4:isRabbit?.3:.34);
+ chest.position.set(.35,isBoar?.59:isRabbit?.49:.7,0);g.add(chest);
+ const neck=new THREE.Mesh(bodyGeo,mat);
+ neck.scale.set(isBoar?.23:isRabbit?.17:.2,isBoar?.3:isRabbit?.22:.34,isBoar?.28:isRabbit?.22:.24);
+ neck.position.set(.43,isBoar?.72:isRabbit?.61:.86,0);neck.rotation.z=-.28;g.add(neck);
+ const headRig=new THREE.Group();headRig.position.set(isRabbit?.35:.58,isRabbit?.69:isBoar?.79:1.02,0);g.add(headRig);
  const head=new THREE.Mesh(headGeo,mat);
- head.scale.set(isBoar?.25:.22,isBoar?.25:.23,isBoar?.23:.2);head.position.set(.08,0,0);headRig.add(head);
- const snout=new THREE.Mesh(new THREE.SphereGeometry(.12,7,5),isBoar?animalMats.cream:animalMats.dark);
- snout.position.set(.26,-.08,0);snout.scale.set(1,.7,.8);headRig.add(snout);
+ head.scale.set(isBoar?.28:isRabbit?.2:.24,isBoar?.24:isRabbit?.2:.22,isBoar?.24:isRabbit?.19:.2);
+ head.position.set(.08,0,0);headRig.add(head);
+ const muzzle=new THREE.Mesh(new THREE.SphereGeometry(1,8,6),isBoar?animalMats.dark:animalMats.cream);
+ muzzle.scale.set(isBoar?.23:.19,isBoar?.13:.12,isBoar?.18:.13);muzzle.position.set(.28,-.08,0);headRig.add(muzzle);
+ const eyeMat=new THREE.MeshStandardMaterial({color:'#171713',roughness:.35});
+ for(const side of [-1,1]){
+  const eye=new THREE.Mesh(new THREE.SphereGeometry(.045,7,6),eyeMat);
+  eye.position.set(.17,.075,side*(isBoar?.205:.17));headRig.add(eye);
+ }
  const legs=[];
- for(const x of [-.35,.32])for(const z of [-.2,.2]){
-  const pivot=new THREE.Group();pivot.position.set(x,isRabbit?.35:.48,z);
-  const leg=new THREE.Mesh(legGeo,mat);leg.position.y=-.29;pivot.add(leg);g.add(pivot);legs.push(pivot);
+ const legTopGeo=new THREE.CylinderGeometry(.085,.075,.32,7),legLowerGeo=new THREE.CylinderGeometry(.055,.065,.3,7);
+ for(const x of [-.39,.34])for(const z of [-.23,.23]){
+  const pivot=new THREE.Group();pivot.position.set(x,isRabbit?.36:isBoar?.43:.48,z);
+  const upper=new THREE.Mesh(legTopGeo,mat);upper.position.y=-.16;pivot.add(upper);
+  const knee=new THREE.Group();knee.position.y=-.31;pivot.add(knee);
+  const lower=new THREE.Mesh(legLowerGeo,mat);lower.position.y=-.14;knee.add(lower);
+  const hoof=new THREE.Mesh(new THREE.SphereGeometry(.085,6,5),isDeer?animalMats.dark:mat);hoof.scale.set(1,.55,1);hoof.position.y=-.29;knee.add(hoof);
+  g.add(pivot);legs.push(pivot);
  }
  const extras=[];
  if(isDeer){
@@ -230,6 +297,27 @@ const clock=new THREE.Clock();
 function animate(){
  requestAnimationFrame(animate);
  const delta=Math.min(clock.getDelta(),.05),t=clock.elapsedTime;
+ if(waterMat.userData.shader)waterMat.userData.shader.uniforms.uRiverTime.value=t;
+ for(const r of ripples){
+  const u=(r.userData.u+t*r.userData.speed)%1,p=riverCurve.getPointAt(u);
+  r.position.set(p.x,.34+Math.sin(t*2+r.userData.phase)*.035,p.z);
+  const pulse=.7+.3*Math.sin(t*2.5+r.userData.phase);r.scale.setScalar(pulse);
+ }
+ for(const f of fish){
+  f.u=(f.u+delta*f.speed)%1;
+  const p=riverCurve.getPointAt(f.u),tangent=riverCurve.getTangentAt(f.u);
+  f.group.position.set(p.x,.53+Math.sin(t*2+f.phase)*.08,p.z);
+  f.group.rotation.y=Math.atan2(-tangent.z,tangent.x);
+  f.tail.rotation.y=Math.sin(t*8+f.phase)*.55;
+ }
+ for(const b of birds){
+  b.angle+=delta*b.speed;
+  const x=b.centerX+Math.cos(b.angle)*b.radius,z=b.centerZ+Math.sin(b.angle)*b.radius*.72;
+  b.group.position.set(x,b.height+Math.sin(t*1.8+b.phase)*2,z);
+  b.group.rotation.y=-b.angle+Math.PI/2;
+  const flap=Math.sin(t*10+b.phase)*.72;
+  b.wings[0].rotation.z=flap;b.wings[1].rotation.z=-flap;
+ }
  for(const a of wildlife){
   if(a.state==='dead'){
    if(t>=a.deadUntil){
@@ -275,7 +363,6 @@ function animate(){
    a.gait+=delta*1.8;
   }
   a.group.rotation.y=a.heading;
-  const stride=moving?1:0;
   for(let j=0;j<a.legs.length;j++){
    const phase=a.gait+(j===0||j===3?0:Math.PI);
    const swing=moving?Math.sin(phase)*(a.kind==='coelho'?.55:.38):Math.sin(t*1.7+a.phase+j)*.025;
@@ -285,7 +372,7 @@ function animate(){
    a.group.position.y=Math.max(0,Math.sin(a.gait*2))*.13;
   }else a.group.position.y=THREE.MathUtils.damp(a.group.position.y,0,8,delta);
   const graze=a.state==='graze'&&!moving;
-  a.headRig.rotation.z=THREE.MathUtils.damp(a.headRig.rotation.z,graze?.42+Math.sin(t*2+a.phase)*.08:Math.sin(t*1.3+a.phase)*.035,3,delta);
+  a.headRig.rotation.z=THREE.MathUtils.damp(a.headRig.rotation.z,graze?.42+Math.sin(t*2+a.phase)*.08:a.state==='flee'?.12:Math.sin(t*1.3+a.phase)*.035,3,delta);
   a.body.rotation.z=THREE.MathUtils.damp(a.body.rotation.z,moving?Math.sin(a.gait)*.025:Math.sin(t*1.5+a.phase)*.012,4,delta);
   if(a.kind==='javali'&&graze)a.headRig.rotation.x=Math.sin(t*3+a.phase)*.08;
  }
