@@ -72,6 +72,15 @@ const ground=new THREE.Mesh(groundGeo,new THREE.MeshStandardMaterial({map:grassT
 
 const under=new THREE.Mesh(new THREE.PlaneGeometry(1100,1100),new THREE.MeshStandardMaterial({color:'#35452b'}));under.rotation.x=-Math.PI/2;under.position.y=-.09;scene.add(under);
 
+// Trilha de terra sinuosa, como nos jogos de exploração em pixel art.
+const trailCurve=new THREE.CatmullRomCurve3([
+ new THREE.Vector3(-12,.045,270),new THREE.Vector3(-8,.045,190),new THREE.Vector3(8,.045,115),
+ new THREE.Vector3(-4,.045,35),new THREE.Vector3(18,.045,-45),new THREE.Vector3(8,.045,-125),
+ new THREE.Vector3(25,.045,-205),new THREE.Vector3(18,.045,-270)
+]);
+const trail=new THREE.Mesh(new THREE.TubeGeometry(trailCurve,180,4.2,6,false),new THREE.MeshStandardMaterial({color:'#987044',roughness:1,flatShading:true}));
+trail.receiveShadow=true;scene.add(trail);
+
 let seed=92831;
 function random(){seed=(seed*1664525+1013904223)>>>0;return seed/4294967296}
 const riverPts=[[-260,.12,130],[-180,.12,95],[-100,.12,45],[-20,.12,10],[70,.12,-35],[160,.12,-95],[260,.12,-145]].map(p=>new THREE.Vector3(...p));
