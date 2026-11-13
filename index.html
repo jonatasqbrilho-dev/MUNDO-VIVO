@@ -29,7 +29,7 @@ canvas{display:block}
 <header class="top"><div class="logo">MV</div><div class="brand"><b>MUNDO VIVO</b><small>O começo de uma civilização</small></div><div class="status"><i></i>MUNDO EM FORMAÇÃO</div></header>
 <section class="card"><div class="eyebrow">CAPÍTULO 01 · O PRIMEIRO TERRITÓRIO</div><h1>Um mundo esperando por seus habitantes.</h1><p>A natureza já existe. As primeiras histórias começarão quando os jogadores criarem seus personagens.</p><div class="stats"><div><b>0</b><span>Habitantes</span></div><div><b>∞</b><span>Mundo aberto</span></div><div><b>01</b><span>Região descoberta</span></div></div></section>
 <div class="tools"><button id="reset">⌖ &nbsp;Centralizar</button><button id="help">? &nbsp;Ajuda</button></div>
-<aside class="guide" id="guide"><button id="close" aria-label="Fechar">×</button><strong>Explore o território</strong><p><b>Arraste</b> para mover o mapa</p><p><b>Roda do mouse</b> para aproximar ou afastar</p><p><b>Botão Centralizar</b> para voltar ao início</p></aside>
+<aside class="guide" id="guide"><button id="close" aria-label="Fechar">×</button><strong>Explore o território</strong><p><b>Arraste com o botão esquerdo</b> para mover o mapa</p><p><b>Roda do mouse</b> para aproximar ou afastar</p><p><b>Botão direito</b> também move o mapa</p><p><b>Botão Centralizar</b> para voltar ao início</p></aside>
 <footer class="footer"><span class="live"></span>Protótipo do mapa · Próxima etapa: criar o primeiro habitante</footer>
 <script type="importmap">
 {
@@ -44,30 +44,30 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 const mount=document.getElementById('scene');
-const scene=new THREE.Scene(); scene.background=new THREE.Color('#b9d0bd'); scene.fog=new THREE.Fog('#b9d0bd',95,190);
-const camera=new THREE.PerspectiveCamera(38,innerWidth/innerHeight,.1,500);
-const startPos=new THREE.Vector3(48,55,58); camera.position.copy(startPos);
+const scene=new THREE.Scene(); scene.background=new THREE.Color('#b9d0bd'); scene.fog=new THREE.Fog('#b9d0bd',520,1050);
+const camera=new THREE.PerspectiveCamera(42,innerWidth/innerHeight,.1,1800);
+const startPos=new THREE.Vector3(190,230,230); camera.position.copy(startPos);
 const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
 renderer.setPixelRatio(Math.min(devicePixelRatio,1.7)); renderer.setSize(innerWidth,innerHeight);
 renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 renderer.outputColorSpace=THREE.SRGBColorSpace; mount.appendChild(renderer.domElement);
-const controls=new OrbitControls(camera,renderer.domElement); controls.target.set(0,0,0); controls.enableRotate=false; controls.enablePan=true; controls.enableDamping=true; controls.dampingFactor=.08; controls.screenSpacePanning=true; controls.minDistance=18; controls.maxDistance=105; controls.maxPolarAngle=Math.PI/2.12; controls.minPolarAngle=Math.PI/3.5;
+const controls=new OrbitControls(camera,renderer.domElement); controls.target.set(0,0,0); controls.enableRotate=false; controls.enablePan=true; controls.enableZoom=true; controls.enableDamping=true; controls.dampingFactor=.08; controls.zoomSpeed=1.25; controls.panSpeed=1.15; controls.screenSpacePanning=true; controls.minDistance=12; controls.maxDistance=850; controls.maxPolarAngle=Math.PI/2.08; controls.minPolarAngle=Math.PI/3.5; controls.mouseButtons.LEFT=THREE.MOUSE.PAN; controls.mouseButtons.MIDDLE=THREE.MOUSE.DOLLY; controls.mouseButtons.RIGHT=THREE.MOUSE.PAN;
 
 scene.add(new THREE.HemisphereLight('#dcebd5','#526b43',1.35));
-const sun=new THREE.DirectionalLight('#fff4d8',2.2); sun.position.set(-35,55,25); sun.castShadow=true; sun.shadow.mapSize.set(2048,2048); sun.shadow.camera.left=-75;sun.shadow.camera.right=75;sun.shadow.camera.top=75;sun.shadow.camera.bottom=-75;scene.add(sun);
+const sun=new THREE.DirectionalLight('#fff4d8',2.2); sun.position.set(-35,55,25); sun.castShadow=true; sun.shadow.mapSize.set(2048,2048); sun.shadow.camera.left=-300;sun.shadow.camera.right=300;sun.shadow.camera.top=300;sun.shadow.camera.bottom=-300;scene.add(sun);
 const ambient=new THREE.AmbientLight('#ffffff',.25);scene.add(ambient);
 
-const groundGeo=new THREE.PlaneGeometry(110,110,90,90);groundGeo.rotateX(-Math.PI/2);
+const groundGeo=new THREE.PlaneGeometry(500,500,150,150);groundGeo.rotateX(-Math.PI/2);
 const pos=groundGeo.attributes.position;const colors=[];const col=new THREE.Color();
 for(let i=0;i<pos.count;i++){const x=pos.getX(i),z=pos.getZ(i);const v=(Math.sin(x*.18)+Math.cos(z*.16)+Math.sin((x+z)*.11))/3;col.setHSL(.285+v*.012,.34+v*.025,.34+v*.035);colors.push(col.r,col.g,col.b)}
 groundGeo.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));groundGeo.computeVertexNormals();
 const ground=new THREE.Mesh(groundGeo,new THREE.MeshStandardMaterial({vertexColors:true,roughness:1}));ground.receiveShadow=true;scene.add(ground);
 
-const under=new THREE.Mesh(new THREE.PlaneGeometry(500,500),new THREE.MeshStandardMaterial({color:'#263c2c'}));under.rotation.x=-Math.PI/2;under.position.y=-.09;scene.add(under);
+const under=new THREE.Mesh(new THREE.PlaneGeometry(1100,1100),new THREE.MeshStandardMaterial({color:'#263c2c'}));under.rotation.x=-Math.PI/2;under.position.y=-.09;scene.add(under);
 
-const riverPts=[[-52,.12,27],[-34,.12,18],[-20,.12,8],[-5,.12,3],[10,.12,-8],[28,.12,-18],[53,.12,-28]].map(p=>new THREE.Vector3(...p));
+const riverPts=[[-260,.12,130],[-180,.12,95],[-100,.12,45],[-20,.12,10],[70,.12,-35],[160,.12,-95],[260,.12,-145]].map(p=>new THREE.Vector3(...p));
 const riverCurve=new THREE.CatmullRomCurve3(riverPts);
-const river=new THREE.Mesh(new THREE.TubeGeometry(riverCurve,130,2.7,12,false),new THREE.MeshStandardMaterial({color:'#4b9ca0',roughness:.27,metalness:.08}));
+const river=new THREE.Mesh(new THREE.TubeGeometry(riverCurve,260,8,14,false),new THREE.MeshStandardMaterial({color:'#4b9ca0',roughness:.27,metalness:.08}));
 river.scale.y=.16;river.receiveShadow=true;scene.add(river);
 
 const greens=['#477d45','#56894b','#3e713f','#63934e'];
@@ -77,8 +77,8 @@ function tree(x,z,s,t){
  const low=new THREE.Mesh(new THREE.ConeGeometry(.85,1.65,7),new THREE.MeshStandardMaterial({color:greens[t],roughness:.95}));low.position.y=1.55;low.castShadow=true;g.add(low);
  const high=new THREE.Mesh(new THREE.ConeGeometry(.61,1.35,7),new THREE.MeshStandardMaterial({color:greens[(t+1)%4],roughness:.95}));high.position.y=2.15;high.castShadow=true;g.add(high);scene.add(g);
 }
-for(let i=0;i<210;i++){const x=Math.sin(i*127.1)*43,z=Math.cos(i*78.23)*43,riverX=-7+z*.75;if(Math.abs(x-riverX)<7|| (Math.abs(x)<8&&Math.abs(z)<7))continue;tree(x,z,.75+(Math.sin(i*19.3)+1)*.23,i%4)}
-for(let i=0;i<32;i++){const x=Math.sin(i*44.1)*42,z=Math.cos(i*18.7)*42,s=.35+(i%4)*.18;const rock=new THREE.Mesh(new THREE.DodecahedronGeometry(.8,0),new THREE.MeshStandardMaterial({color:'#858b7b',roughness:1}));rock.position.set(x,.42*s,z);rock.scale.setScalar(s);rock.rotation.set(.2,.5,.15);rock.castShadow=true;scene.add(rock)}
+for(let i=0;i<650;i++){const x=Math.sin(i*127.1)*238,z=Math.cos(i*78.23)*238,riverX=25-z*.78;if(Math.abs(x-riverX)<19||(Math.abs(x)<24&&Math.abs(z)<24))continue;tree(x,z,.8+(Math.sin(i*19.3)+1)*.35,i%4)}
+for(let i=0;i<110;i++){const x=Math.sin(i*44.1)*235,z=Math.cos(i*18.7)*235,s=.45+(i%4)*.22;const rock=new THREE.Mesh(new THREE.DodecahedronGeometry(.8,0),new THREE.MeshStandardMaterial({color:'#858b7b',roughness:1}));rock.position.set(x,.42*s,z);rock.scale.setScalar(s);rock.rotation.set(.2,.5,.15);rock.castShadow=true;scene.add(rock)}
 
 function resize(){camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)}
 addEventListener('resize',resize);
