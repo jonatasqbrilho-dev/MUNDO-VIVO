@@ -46,6 +46,8 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 const mount=document.getElementById('scene');
+let seed=92831;
+function random(){seed=(seed*1664525+1013904223)>>>0;return seed/4294967296}
 const scene=new THREE.Scene(); scene.background=new THREE.Color('#526b3e');
 const viewHeight=260;
 const camera=new THREE.OrthographicCamera(-viewHeight*innerWidth/innerHeight/2,viewHeight*innerWidth/innerHeight/2,viewHeight/2,-viewHeight/2,.1,1800);
@@ -81,8 +83,6 @@ const trailCurve=new THREE.CatmullRomCurve3([
 const trail=new THREE.Mesh(new THREE.TubeGeometry(trailCurve,180,4.2,6,false),new THREE.MeshStandardMaterial({color:'#987044',roughness:1,flatShading:true}));
 trail.receiveShadow=true;scene.add(trail);
 
-let seed=92831;
-function random(){seed=(seed*1664525+1013904223)>>>0;return seed/4294967296}
 const riverPts=[[-260,.12,130],[-180,.12,95],[-100,.12,45],[-20,.12,10],[70,.12,-35],[160,.12,-95],[260,.12,-145]].map(p=>new THREE.Vector3(...p));
 const riverCurve=new THREE.CatmullRomCurve3(riverPts);
 // Amostra a curva real do rio para impedir árvores e pedras dentro da água, inclusive nas curvas.
