@@ -293,7 +293,7 @@ function animalEllipsoid(parent,material,pos,scale,segments=12){
  mesh.position.set(...pos);mesh.scale.set(...scale);parent.add(mesh);return mesh;
 }
 function makeAnimal(kind,index){
- const g=new THREE.Group();
+ const g=new THREE.Group(),ears=[];let tailRig=null;
  const isDeer=kind==='cervo',isBoar=kind==='javali',isRabbit=kind==='coelho';
  const coat=isDeer?animalMats.fur:isBoar?animalMats.boar:animalMats.rabbit;
  const dark=isBoar?animalMats.dark:animalMats.dark;
@@ -305,6 +305,10 @@ function makeAnimal(kind,index){
   isRabbit?[.25,.28,.29]:isBoar?[.38,.34,.37]:[.34,.34,.32],14);
  animalEllipsoid(g,coat,[.34,isRabbit?.48:isBoar?.59:.7,0],
   isRabbit?[.23,.29,.27]:isBoar?[.34,.39,.36]:[.31,.43,.34],14);
+ if(isDeer){
+  // Pequenas pintas claras no dorso quebram a superfície lisa da pelagem.
+  for(const x of [-.38,-.12,.14])for(const side of [-1,1])animalEllipsoid(g,cream,[x,1.005,side*.205],[.035,.022,.028],7);
+ }
  // Pescoço e cabeça variam de acordo com a anatomia da espécie.
  if(isDeer){
   const neck=animalEllipsoid(g,coat,[.48,.94,0],[.22,.48,.21],14);neck.rotation.z=-.38;
@@ -341,9 +345,9 @@ function makeAnimal(kind,index){
   animalEllipsoid(headRig,eyeMat,[.17,.09,side*(isBoar?.245:isRabbit?.17:.19)],[.038,.043,.025],9);
   if(isBoar){
    const ear=new THREE.Mesh(new THREE.ConeGeometry(.13,.38,7),coat);
-   ear.position.set(-.02,.29,side*.22);ear.rotation.z=-.28;headRig.add(ear);
+   ear.position.set(-.02,.29,side*.22);ear.rotation.z=-.28;headRig.add(ear);ear.userData.baseRotationZ=ear.rotation.z;ears.push(ear);
   }else if(isDeer){
-   const ear=animalEllipsoid(headRig,coat,[-.08,.18,side*.27],[.075,.22,.09],10);ear.rotation.z=-.35;
+   const ear=animalEllipsoid(headRig,coat,[-.08,.18,side*.27],[.075,.22,.09],10);ear.rotation.z=-.35;ear.userData.baseRotationZ=ear.rotation.z;ears.push(ear);
    // Galhada ramificada, com base e três pontas de cada lado.
    const base=new THREE.Vector3(-.015,.22,side*.105);
    const stemEnd=new THREE.Vector3(-.04,.72,side*.18);
@@ -357,7 +361,7 @@ function makeAnimal(kind,index){
    const outer=animalEllipsoid(ear,coat,[0,.29,0],[.075,.34,.065],10);
    const innerMat=new THREE.MeshStandardMaterial({color:'#b97879',roughness:.9});
    animalEllipsoid(ear,innerMat,[.025,.3,side*.036],[.034,.25,.018],9);
-   ear.userData.baseY=ear.rotation.z;
+   ear.userData.baseY=ear.rotation.z;ear.userData.baseRotationZ=ear.rotation.z;ears.push(ear);
   }
  }
  // Pernas articuladas em quatro pontos; patas e cascos são diferentes por espécie.
@@ -384,15 +388,15 @@ function makeAnimal(kind,index){
  }
  const extras=[];
  if(isRabbit){
-  animalEllipsoid(g,cream,[-.55,.53,0],[.13,.13,.13],10);
+  tailRig=animalEllipsoid(g,cream,[-.55,.53,0],[.13,.13,.13],10);tailRig.userData.baseRotationZ=0;
   // Coxas mais fortes dão ao coelho a postura de salto característica.
   for(const side of [-1,1])animalEllipsoid(g,coat,[-.34,.37,side*.19],[.23,.22,.15],11);
  }else if(isDeer){
   animalEllipsoid(g,cream,[-.53,.69,0],[.11,.16,.16],10);
   // Pequena cauda curta.
-  const tail=animalEllipsoid(g,cream,[-.68,.82,0],[.12,.18,.12],9);tail.rotation.z=-.4;
+  tailRig=animalEllipsoid(g,cream,[-.68,.82,0],[.12,.18,.12],9);tailRig.rotation.z=-.4;tailRig.userData.baseRotationZ=tailRig.rotation.z;
  }else{
-  const tail=animalEllipsoid(g,dark,[-.79,.69,0],[.22,.1,.105],10);tail.rotation.z=.35;
+  tailRig=animalEllipsoid(g,dark,[-.79,.69,0],[.22,.1,.105],10);tailRig.rotation.z=.35;tailRig.userData.baseRotationZ=tailRig.rotation.z;
  }
  const angle=random()*Math.PI*2,radius=35+random()*190;
  g.position.set(Math.cos(angle)*radius,0,Math.sin(angle)*radius);
@@ -403,7 +407,7 @@ function makeAnimal(kind,index){
  g.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true}});
  scene.add(g);
  const hpMax=isRabbit?38+Math.round(size*10):isDeer?115+Math.round(size*35):155+Math.round(size*45);
- const animal={group:g,body,headRig,legs,extras,kind,target:new THREE.Vector3(),state:'idle',stateTime:2+random()*5,
+ const animal={group:g,body,headRig,legs,ears,tailRig,extras,kind,target:new THREE.Vector3(),state:'idle',stateTime:2+random()*5,
   hpMax,hp:hpMax,blood:null,deathTime:0,speed:isDeer?2.1:isBoar?1.35:2.6,speedFactor:1,heading:random()*Math.PI*2,phase:random()*Math.PI*2,
   gait:0,homeX:g.position.x,homeZ:g.position.z};
  pickAnimalTarget(animal);animal.stateTime=1+random()*5;animal.state='idle';
@@ -453,7 +457,7 @@ function makeWolf(index,pack){
   legs.push(pivot);
  }
  // Cauda longa e espessa, inclinada para baixo.
- const tail=new THREE.Group();tail.position.set(-.69,.77,0);tail.rotation.z=-.55;g.add(tail);
+ const tail=new THREE.Group();tail.position.set(-.69,.77,0);tail.rotation.z=-.55;tail.userData.baseRotationZ=tail.rotation.z;g.add(tail);
  animalEllipsoid(tail,wolfMats.dark,[-.2,-.12,0],[.34,.13,.14],12);
  animalEllipsoid(tail,wolfMats.fur,[-.38,-.17,0],[.15,.12,.13],10);
  const angle=pack===0?-.65:Math.PI-.65;
@@ -461,7 +465,7 @@ function makeWolf(index,pack){
  const sizeFactor=.88+random()*.62;g.scale.setScalar(sizeFactor);scene.add(g);
  const wolfInfo={name:'Lobo-cinzento',description:'Predador social que patrulha em alcateia, fareja presas e pode iniciar uma perseguição.',details:'Mamífero · Carnívoro · Predador'};
  g.traverse(o=>{if(o.isMesh)o.userData.animalInfo=wolfInfo});
- predators.push({group:g,headRig,legs,pack,target:null,state:'patrol',heading:angle+Math.PI,
+ predators.push({group:g,headRig,legs,tail,pack,target:null,state:'patrol',heading:angle+Math.PI,
   speed:3.25+random()*.35,phase:random()*6,hunger:45+random()*30,decision:2+random()*3,sizeFactor,
   patrolTarget:new THREE.Vector3(g.position.x,0,g.position.z),cooldown:random()*2,biteCooldown:0,feedUntil:0});
 }
@@ -620,6 +624,9 @@ function animate(){
   a.headRig.rotation.z=THREE.MathUtils.damp(a.headRig.rotation.z,graze?.42+Math.sin(t*2+a.phase)*.08:a.state==='flee'?.12:Math.sin(t*1.3+a.phase)*.035,3,delta);
   a.body.rotation.z=THREE.MathUtils.damp(a.body.rotation.z,moving?Math.sin(a.gait)*.025:Math.sin(t*1.5+a.phase)*.012,4,delta);
   if(a.kind==='javali'&&graze)a.headRig.rotation.x=Math.sin(t*3+a.phase)*.08;
+  // Orelhas reagem ao ambiente e as caudas acompanham o estado do animal.
+  for(let e=0;e<a.ears.length;e++){const ear=a.ears[e];ear.rotation.z=(ear.userData.baseRotationZ||0)+Math.sin(t*2.2+a.phase+e*1.7)*(a.kind==='coelho'?.055:.025);}
+  if(a.tailRig)a.tailRig.rotation.z=(a.tailRig.userData.baseRotationZ||0)+Math.sin(t*2.8+a.phase)*.09;
  }
  // CAÇA COM HP: cada mordida causa dano; animais maiores suportam mais dano.
  function createBlood(a){
@@ -685,6 +692,7 @@ function animate(){
   }
   const running=w.state==='chase';w.phase+=delta*(running?12:6);
   for(let j=0;j<w.legs.length;j++)w.legs[j].rotation.z=Math.sin(w.phase+(j===0||j===3?0:Math.PI))*(running?.48:w.state==='attack'?.08:.2);
+  w.tail.rotation.z=w.tail.userData.baseRotationZ+Math.sin(t*2.5+w.phase*.35)*.12;
  }
  if(selectedAnimal&& !animalInfoPanel.hidden)refreshAnimalPanel(selectedAnimal);
  controls.update();renderer.render(scene,camera);
