@@ -8,8 +8,8 @@
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Manrope:wght@500;600;700;800&display=swap');
 *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;font-family:'DM Sans',sans-serif}
-#scene{position:fixed;inset:0;background:#b9d0bd}
-canvas{display:block}
+#scene{position:fixed;inset:0;background:#526b3e;overflow:hidden}
+canvas{display:block;width:100%;height:100%;image-rendering:pixelated;image-rendering:crisp-edges}
 .top{position:fixed;z-index:2;top:22px;left:25px;display:flex;align-items:center;gap:12px;color:#183a2b}
 .logo{width:43px;height:43px;border-radius:14px;background:#183a2b;color:#d8e7bb;display:grid;place-items:center;font:800 14px Manrope;box-shadow:0 5px 18px #10251c44}
 .brand{display:flex;flex-direction:column;gap:2px;text-shadow:0 1px 8px #18332355}.brand b{font:800 13px Manrope;letter-spacing:2.5px}.brand small{font-size:11px;color:#31503c;font-weight:600}
@@ -46,26 +46,31 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 const mount=document.getElementById('scene');
-const scene=new THREE.Scene(); scene.background=new THREE.Color('#b9d0bd'); scene.fog=new THREE.Fog('#b9d0bd',520,1050);
-const camera=new THREE.PerspectiveCamera(42,innerWidth/innerHeight,.1,1800);
-const startPos=new THREE.Vector3(190,230,230); camera.position.copy(startPos);
-const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
-renderer.setPixelRatio(Math.min(devicePixelRatio,1.7)); renderer.setSize(innerWidth,innerHeight);
+const scene=new THREE.Scene(); scene.background=new THREE.Color('#526b3e');
+const viewHeight=260;
+const camera=new THREE.OrthographicCamera(-viewHeight*innerWidth/innerHeight/2,viewHeight*innerWidth/innerHeight/2,viewHeight/2,-viewHeight/2,.1,1800);
+const startPos=new THREE.Vector3(0,330,105); camera.position.copy(startPos); camera.lookAt(0,0,0);
+const renderer=new THREE.WebGLRenderer({antialias:false,powerPreference:'high-performance'});
+renderer.setPixelRatio(1); renderer.setSize(Math.max(240,Math.floor(innerWidth*.48)),Math.max(160,Math.floor(innerHeight*.48)),false);
+renderer.domElement.style.width='100%';renderer.domElement.style.height='100%';
 renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 renderer.outputColorSpace=THREE.SRGBColorSpace; mount.appendChild(renderer.domElement);
-const controls=new OrbitControls(camera,renderer.domElement); controls.target.set(0,0,0); controls.enableRotate=false; controls.enablePan=true; controls.enableZoom=true; controls.enableDamping=true; controls.dampingFactor=.08; controls.zoomSpeed=1.25; controls.panSpeed=1.15; controls.screenSpacePanning=true; controls.minDistance=12; controls.maxDistance=850; controls.maxPolarAngle=Math.PI/2.08; controls.minPolarAngle=Math.PI/3.5; controls.mouseButtons.LEFT=THREE.MOUSE.PAN; controls.mouseButtons.MIDDLE=THREE.MOUSE.DOLLY; controls.mouseButtons.RIGHT=THREE.MOUSE.PAN;
+const controls=new OrbitControls(camera,renderer.domElement); controls.target.set(0,0,0); controls.enableRotate=false; controls.enablePan=true; controls.enableZoom=true; controls.enableDamping=true; controls.dampingFactor=.08; controls.zoomSpeed=1.15; controls.panSpeed=1.15; controls.screenSpacePanning=true; controls.minZoom=.55;controls.maxZoom=2.8;controls.mouseButtons.LEFT=THREE.MOUSE.PAN; controls.mouseButtons.MIDDLE=THREE.MOUSE.DOLLY; controls.mouseButtons.RIGHT=THREE.MOUSE.PAN;
 
-scene.add(new THREE.HemisphereLight('#dcebd5','#526b43',1.35));
-const sun=new THREE.DirectionalLight('#fff4d8',2.2); sun.position.set(-35,55,25); sun.castShadow=true; sun.shadow.mapSize.set(2048,2048); sun.shadow.camera.left=-300;sun.shadow.camera.right=300;sun.shadow.camera.top=300;sun.shadow.camera.bottom=-300;scene.add(sun);
-const ambient=new THREE.AmbientLight('#ffffff',.25);scene.add(ambient);
+scene.add(new THREE.HemisphereLight('#d7e4a5','#34452b',1.45));
+const sun=new THREE.DirectionalLight('#ffe0a0',1.65); sun.position.set(-35,55,25); sun.castShadow=true; sun.shadow.mapSize.set(1024,1024); sun.shadow.camera.left=-300;sun.shadow.camera.right=300;sun.shadow.camera.top=300;sun.shadow.camera.bottom=-300;scene.add(sun);
+const ambient=new THREE.AmbientLight('#fff0c2',.32);scene.add(ambient);
 
-const groundGeo=new THREE.PlaneGeometry(500,500,150,150);groundGeo.rotateX(-Math.PI/2);
-const pos=groundGeo.attributes.position;const colors=[];const col=new THREE.Color();
-for(let i=0;i<pos.count;i++){const x=pos.getX(i),z=pos.getZ(i);const v=(Math.sin(x*.18)+Math.cos(z*.16)+Math.sin((x+z)*.11))/3;col.setHSL(.285+v*.012,.34+v*.025,.34+v*.035);colors.push(col.r,col.g,col.b)}
-groundGeo.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));groundGeo.computeVertexNormals();
-const ground=new THREE.Mesh(groundGeo,new THREE.MeshStandardMaterial({vertexColors:true,roughness:1}));ground.receiveShadow=true;scene.add(ground);
+const groundGeo=new THREE.PlaneGeometry(500,500,1,1);groundGeo.rotateX(-Math.PI/2);
+// Textura procedural em baixa resolução: manchas de grama e pixels em tons terrosos.
+const grassCanvas=document.createElement('canvas');grassCanvas.width=256;grassCanvas.height=256;
+const grassCtx=grassCanvas.getContext('2d');grassCtx.fillStyle='#71864a';grassCtx.fillRect(0,0,256,256);
+const grassPalette=['#667d43','#829052','#596f3c','#91a05b','#746f42','#9a9257'];
+for(let i=0;i<2100;i++){grassCtx.fillStyle=grassPalette[Math.floor(random()*grassPalette.length)];const x=Math.floor(random()*256),y=Math.floor(random()*256),w=1+Math.floor(random()*4);grassCtx.fillRect(x,y,w,1+Math.floor(random()*3));}
+const grassTexture=new THREE.CanvasTexture(grassCanvas);grassTexture.colorSpace=THREE.SRGBColorSpace;grassTexture.magFilter=THREE.NearestFilter;grassTexture.minFilter=THREE.NearestMipmapNearestFilter;grassTexture.wrapS=grassTexture.wrapT=THREE.RepeatWrapping;grassTexture.repeat.set(5,5);
+const ground=new THREE.Mesh(groundGeo,new THREE.MeshStandardMaterial({map:grassTexture,roughness:1}));ground.receiveShadow=true;scene.add(ground);
 
-const under=new THREE.Mesh(new THREE.PlaneGeometry(1100,1100),new THREE.MeshStandardMaterial({color:'#263c2c'}));under.rotation.x=-Math.PI/2;under.position.y=-.09;scene.add(under);
+const under=new THREE.Mesh(new THREE.PlaneGeometry(1100,1100),new THREE.MeshStandardMaterial({color:'#35452b'}));under.rotation.x=-Math.PI/2;under.position.y=-.09;scene.add(under);
 
 let seed=92831;
 function random(){seed=(seed*1664525+1013904223)>>>0;return seed/4294967296}
@@ -126,11 +131,11 @@ for(let i=0;i<14;i++){
 // FLORESTA DENSA: árvores instanciadas para manter o desempenho mesmo em grande quantidade.
 const greens=['#477d45','#56894b','#3e713f','#63934e','#35683a','#719b55'];
 const trunkGeo=new THREE.CylinderGeometry(.16,.24,1.8,7);
-const crownGeo=new THREE.ConeGeometry(1.05,2.15,7);
-const crownTopGeo=new THREE.ConeGeometry(.76,1.75,7);
-const trunkMat=new THREE.MeshStandardMaterial({color:'#79543a',roughness:1});
-const crownMat=new THREE.MeshStandardMaterial({color:'#56894b',roughness:.95});
-const crownTopMat=new THREE.MeshStandardMaterial({color:'#477d45',roughness:.95});
+const crownGeo=new THREE.IcosahedronGeometry(1.05,1);
+const crownTopGeo=new THREE.IcosahedronGeometry(.78,1);
+const trunkMat=new THREE.MeshStandardMaterial({color:'#76503a',roughness:1,flatShading:true});
+const crownMat=new THREE.MeshStandardMaterial({color:'#71834a',roughness:1,flatShading:true});
+const crownTopMat=new THREE.MeshStandardMaterial({color:'#8d9854',roughness:1,flatShading:true});
 const forestCount=2600;
 const trunks=new THREE.InstancedMesh(trunkGeo,trunkMat,forestCount);
 const crowns=new THREE.InstancedMesh(crownGeo,crownMat,forestCount);
@@ -303,9 +308,9 @@ function chooseWolfPrey(w){
  return best;
 }
 
-function resize(){camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)}
+function resize(){const aspect=innerWidth/innerHeight;camera.left=-viewHeight*aspect/2;camera.right=viewHeight*aspect/2;camera.top=viewHeight/2;camera.bottom=-viewHeight/2;camera.updateProjectionMatrix();renderer.setSize(Math.max(240,Math.floor(innerWidth*.48)),Math.max(160,Math.floor(innerHeight*.48)),false)}
 addEventListener('resize',resize);
-document.getElementById('reset').onclick=()=>{camera.position.copy(startPos);controls.target.set(0,0,0);controls.update()};
+document.getElementById('reset').onclick=()=>{camera.position.copy(startPos);camera.zoom=1;camera.updateProjectionMatrix();controls.target.set(0,0,0);controls.update()};
 const guide=document.getElementById('guide');document.getElementById('help').onclick=()=>guide.hidden=!guide.hidden;document.getElementById('close').onclick=()=>guide.hidden=true;
 // Seleção por clique: identifica qualquer parte visível do modelo do animal.
 const animalInfoPanel=document.getElementById('animalInfo');
