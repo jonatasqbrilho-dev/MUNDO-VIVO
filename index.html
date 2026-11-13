@@ -65,6 +65,8 @@ const ground=new THREE.Mesh(groundGeo,new THREE.MeshStandardMaterial({vertexColo
 
 const under=new THREE.Mesh(new THREE.PlaneGeometry(1100,1100),new THREE.MeshStandardMaterial({color:'#263c2c'}));under.rotation.x=-Math.PI/2;under.position.y=-.09;scene.add(under);
 
+let seed=92831;
+function random(){seed=(seed*1664525+1013904223)>>>0;return seed/4294967296}
 const riverPts=[[-260,.12,130],[-180,.12,95],[-100,.12,45],[-20,.12,10],[70,.12,-35],[160,.12,-95],[260,.12,-145]].map(p=>new THREE.Vector3(...p));
 const riverCurve=new THREE.CatmullRomCurve3(riverPts);
 const riverGeo=new THREE.TubeGeometry(riverCurve,260,8,14,false);
@@ -130,8 +132,7 @@ const crowns=new THREE.InstancedMesh(crownGeo,crownMat,forestCount);
 const crownTops=new THREE.InstancedMesh(crownTopGeo,crownTopMat,forestCount);
 trunks.castShadow=true;crowns.castShadow=true;crownTops.castShadow=true;
 const dummy=new THREE.Object3D();
-let planted=0,seed=92831;
-function random(){seed=(seed*1664525+1013904223)>>>0;return seed/4294967296}
+let planted=0;
 for(let i=0;i<forestCount*3&&planted<forestCount;i++){
  const x=(random()-.5)*490,z=(random()-.5)*490;
  const riverX=25-z*.78;
