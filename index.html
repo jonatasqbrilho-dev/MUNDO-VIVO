@@ -265,69 +265,131 @@ function pickAnimalTarget(a){
  a.stateTime=a.state==='walk'?5+random()*12:3+random()*9;
  a.speedFactor=a.kind==='coelho'?1.15+random()*.65:a.kind==='cervo'?1+random()*.45:.65+random()*.4;
 }
+// Constrói membros e galhadas entre pontos, com geometria orientada corretamente.
+function animalLimb(parent,start,end,radius,material,radial=7){
+ const dir=new THREE.Vector3().subVectors(end,start),length=dir.length();
+ const mesh=new THREE.Mesh(new THREE.CylinderGeometry(radius*.78,radius,length,radial),material);
+ mesh.position.copy(start).add(end).multiplyScalar(.5);
+ mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir.normalize());
+ parent.add(mesh);return mesh;
+}
+function animalEllipsoid(parent,material,pos,scale,segments=12){
+ const mesh=new THREE.Mesh(new THREE.SphereGeometry(1,segments,Math.max(8,segments-3)),material);
+ mesh.position.set(...pos);mesh.scale.set(...scale);parent.add(mesh);return mesh;
+}
 function makeAnimal(kind,index){
  const g=new THREE.Group();
  const isDeer=kind==='cervo',isBoar=kind==='javali',isRabbit=kind==='coelho';
- const mat=isDeer?animalMats.fur:isBoar?animalMats.boar:animalMats.rabbit;
- // Silhuetas anatômicas: tronco, peito, garupa, pescoço e focinho em proporções próprias.
- const body=new THREE.Mesh(bodyGeo,mat);
- body.scale.set(isBoar?.78:isRabbit?.43:.68,isBoar?.43:isRabbit?.34:.39,isBoar?.39:isRabbit?.29:.31);
- body.position.set(-.02,isBoar?.57:isRabbit?.48:.68,0);g.add(body);
- const rump=new THREE.Mesh(bodyGeo,mat);
- rump.scale.set(isBoar?.34:isRabbit?.25:.31,isBoar?.34:isRabbit?.29:.34,isBoar?.38:isRabbit?.3:.32);
- rump.position.set(-.39,isBoar?.58:isRabbit?.49:.67,0);g.add(rump);
- const chest=new THREE.Mesh(bodyGeo,mat);
- chest.scale.set(isBoar?.3:isRabbit?.23:.28,isBoar?.42:isRabbit?.33:.42,isBoar?.4:isRabbit?.3:.34);
- chest.position.set(.35,isBoar?.59:isRabbit?.49:.7,0);g.add(chest);
- const neck=new THREE.Mesh(bodyGeo,mat);
- neck.scale.set(isBoar?.23:isRabbit?.17:.2,isBoar?.3:isRabbit?.22:.34,isBoar?.28:isRabbit?.22:.24);
- neck.position.set(.43,isBoar?.72:isRabbit?.61:.86,0);neck.rotation.z=-.28;g.add(neck);
- const headRig=new THREE.Group();headRig.position.set(isRabbit?.35:.58,isRabbit?.69:isBoar?.79:1.02,0);g.add(headRig);
- const head=new THREE.Mesh(headGeo,mat);
- head.scale.set(isBoar?.28:isRabbit?.2:.24,isBoar?.24:isRabbit?.2:.22,isBoar?.24:isRabbit?.19:.2);
- head.position.set(.08,0,0);headRig.add(head);
- const muzzle=new THREE.Mesh(new THREE.SphereGeometry(1,8,6),isBoar?animalMats.dark:animalMats.cream);
- muzzle.scale.set(isBoar?.23:.19,isBoar?.13:.12,isBoar?.18:.13);muzzle.position.set(.28,-.08,0);headRig.add(muzzle);
- const eyeMat=new THREE.MeshStandardMaterial({color:'#171713',roughness:.35});
- for(const side of [-1,1]){
-  const eye=new THREE.Mesh(new THREE.SphereGeometry(.045,7,6),eyeMat);
-  eye.position.set(.17,.075,side*(isBoar?.205:.17));headRig.add(eye);
+ const coat=isDeer?animalMats.fur:isBoar?animalMats.boar:animalMats.rabbit;
+ const dark=isBoar?animalMats.dark:animalMats.dark;
+ const cream=animalMats.cream;
+ // Corpo alongado e volumes musculares sobrepostos para uma silhueta de mamífero.
+ const body=animalEllipsoid(g,coat,[ -.04,isRabbit?.48:isBoar?.57:.69,0],
+  isRabbit?[.43,.31,.29]:isBoar?[.79,.43,.39]:[.7,.39,.32],16);
+ animalEllipsoid(g,coat,[-.4,isRabbit?.49:isBoar?.58:.68,0],
+  isRabbit?[.25,.28,.29]:isBoar?[.38,.34,.37]:[.34,.34,.32],14);
+ animalEllipsoid(g,coat,[.34,isRabbit?.48:isBoar?.59:.7,0],
+  isRabbit?[.23,.29,.27]:isBoar?[.34,.39,.36]:[.31,.43,.34],14);
+ // Pescoço e cabeça variam de acordo com a anatomia da espécie.
+ if(isDeer){
+  const neck=animalEllipsoid(g,coat,[.48,.94,0],[.22,.48,.21],14);neck.rotation.z=-.38;
+ }else if(isBoar){
+  const neck=animalEllipsoid(g,coat,[.48,.7,0],[.31,.31,.31],14);neck.rotation.z=-.18;
+ }else{
+  const neck=animalEllipsoid(g,coat,[.3,.62,0],[.19,.24,.2],12);
  }
+ const headRig=new THREE.Group();headRig.position.set(isRabbit?.42:isBoar?.68:.68,isRabbit?.68:isBoar?.82:1.14,0);g.add(headRig);
+ animalEllipsoid(headRig,coat,[.08,0,0],isRabbit?[.22,.19,.2]:isBoar?[.31,.26,.29]:[.25,.25,.22],14);
+ // Focinho projetado, narinas e queixo claros.
+ if(isBoar){
+  animalEllipsoid(headRig,dark,[.36,-.1,0],[.34,.16,.2],12);
+  animalEllipsoid(headRig,coat,[.22,-.02,0],[.2,.19,.22],12);
+  for(const side of [-1,1]){
+   animalEllipsoid(headRig,dark,[.64,-.075,side*.105],[.035,.045,.035],8);
+   const tusk=new THREE.Mesh(new THREE.ConeGeometry(.055,.24,8),cream);
+   tusk.position.set(.39,-.19,side*.205);tusk.rotation.z=-.18;headRig.add(tusk);
+  }
+ }else if(isDeer){
+  animalEllipsoid(headRig,cream,[.3,-.105,0],[.19,.105,.14],12);
+  animalEllipsoid(headRig,dark,[.45,-.075,0],[.055,.055,.075],10);
+ }else{
+  animalEllipsoid(headRig,cream,[.27,-.075,0],[.15,.105,.13],12);
+  animalEllipsoid(headRig,dark,[.39,-.035,0],[.045,.04,.05],8);
+  // Bochechas e bigodes finos.
+  for(const side of [-1,1]){
+   animalEllipsoid(headRig,cream,[.18,-.13,side*.105],[.105,.075,.075],9);
+   for(let k=0;k<2;k++)animalLimb(headRig,new THREE.Vector3(.18,-.13,side*.14),new THREE.Vector3(.31+k*.035,-.17-k*.025,side*.23),.008,cream,5);
+  }
+ }
+ const eyeMat=new THREE.MeshStandardMaterial({color:'#171713',roughness:.25});
+ for(const side of [-1,1]){
+  animalEllipsoid(headRig,eyeMat,[.17,.09,side*(isBoar?.245:isRabbit?.17:.19)],[.038,.043,.025],9);
+  if(isBoar){
+   const ear=new THREE.Mesh(new THREE.ConeGeometry(.13,.38,7),coat);
+   ear.position.set(-.02,.29,side*.22);ear.rotation.z=-.28;headRig.add(ear);
+  }else if(isDeer){
+   const ear=animalEllipsoid(headRig,coat,[-.08,.18,side*.27],[.075,.22,.09],10);ear.rotation.z=-.35;
+   // Galhada ramificada, com base e três pontas de cada lado.
+   const base=new THREE.Vector3(-.015,.22,side*.105);
+   const stemEnd=new THREE.Vector3(-.04,.72,side*.18);
+   animalLimb(headRig,base,stemEnd,.045,animalMats.antler,7);
+   animalLimb(headRig,new THREE.Vector3(-.03,.42,side*.14),new THREE.Vector3(.02,.58,side*.34),.026,animalMats.antler,6);
+   animalLimb(headRig,new THREE.Vector3(-.035,.55,side*.16),new THREE.Vector3(-.17,.7,side*.25),.025,animalMats.antler,6);
+   animalLimb(headRig,new THREE.Vector3(-.04,.7,side*.18),new THREE.Vector3(-.16,.86,side*.2),.022,animalMats.antler,6);
+  }else{
+   // Orelhas compridas e afiladas, com interior rosado.
+   const ear=new THREE.Group();ear.position.set(-.04,.16,side*.12);ear.rotation.z=-.12;ear.rotation.x=side*.12;headRig.add(ear);
+   const outer=animalEllipsoid(ear,coat,[0,.29,0],[.075,.34,.065],10);
+   const innerMat=new THREE.MeshStandardMaterial({color:'#b97879',roughness:.9});
+   animalEllipsoid(ear,innerMat,[.025,.3,side*.036],[.034,.25,.018],9);
+   ear.userData.baseY=ear.rotation.z;
+  }
+ }
+ // Pernas articuladas em quatro pontos; patas e cascos são diferentes por espécie.
  const legs=[];
- const legTopGeo=new THREE.CylinderGeometry(.085,.075,.32,7),legLowerGeo=new THREE.CylinderGeometry(.055,.065,.3,7);
- for(const x of [-.39,.34])for(const z of [-.23,.23]){
-  const pivot=new THREE.Group();pivot.position.set(x,isRabbit?.36:isBoar?.43:.48,z);
-  const upper=new THREE.Mesh(legTopGeo,mat);upper.position.y=-.16;pivot.add(upper);
-  const knee=new THREE.Group();knee.position.y=-.31;pivot.add(knee);
-  const lower=new THREE.Mesh(legLowerGeo,mat);lower.position.y=-.14;knee.add(lower);
-  const hoof=new THREE.Mesh(new THREE.SphereGeometry(.085,6,5),isDeer?animalMats.dark:mat);hoof.scale.set(1,.55,1);hoof.position.y=-.29;knee.add(hoof);
-  g.add(pivot);legs.push(pivot);
+ const legPairs=isRabbit?[[-.29,.34],[-.29,-.34],[.29,.34],[.29,-.34]]:[[-.4,.23],[-.4,-.23],[.34,.23],[.34,-.23]];
+ for(let i=0;i<legPairs.length;i++){
+  const [x,z]=legPairs[i],front=x>0;
+  const hipY=isRabbit?(front?.34:.37):isBoar?.43:.49;
+  const pivot=new THREE.Group();pivot.position.set(x,hipY,z);g.add(pivot);
+  const upperLen=isRabbit?(front?.2:.24):isDeer?(front?.34:.39):isBoar?.24:.29;
+  const upperRadius=isRabbit?.075:isDeer?.07:isBoar?.105:.085;
+  animalLimb(pivot,new THREE.Vector3(0,0,0),new THREE.Vector3(front?.015:-.025,-upperLen,0),upperRadius,coat,7);
+  const knee=new THREE.Group();knee.position.set(front?.015:-.025,-upperLen,0);pivot.add(knee);
+  const lowerLen=isRabbit?(front?.13:.12):isDeer?.34:isBoar?.18:.27;
+  animalLimb(knee,new THREE.Vector3(0,0,0),new THREE.Vector3(front?.015:.025,-lowerLen,0),upperRadius*.68,coat,7);
+  if(isRabbit){
+   animalEllipsoid(knee,coat,[.09,-lowerLen-.025,0],[.16,.075,.105],10);
+  }else{
+   const hoofMat=isDeer?dark:isBoar?dark:coat;
+   animalEllipsoid(knee,hoofMat,[.055,-lowerLen-.045,0],isDeer?[.105,.07,.09]:[.12,.085,.105],9);
+   if(isDeer)animalEllipsoid(knee,hoofMat,[.12,-lowerLen-.04,.035],[.07,.06,.045],8);
+  }
+  legs.push(pivot);
  }
  const extras=[];
- if(isDeer){
-  for(const side of [-1,1]){
-   const ear=new THREE.Mesh(new THREE.ConeGeometry(.075,.32,5),animalMats.fur);ear.position.set(.0,.2,side*.16);ear.rotation.z=-.35;headRig.add(ear);extras.push(ear);
-   const horn=new THREE.Mesh(new THREE.CylinderGeometry(.025,.045,.42,5),animalMats.antler);horn.position.set(.02,.32,side*.1);horn.rotation.z=-.25;headRig.add(horn);
-  }
- }else if(isRabbit){
-  for(const side of [-1,1]){const ear=new THREE.Mesh(new THREE.CapsuleGeometry(.07,.28,3,6),animalMats.rabbit);ear.position.set(.0,.3,side*.1);ear.rotation.z=-.18;headRig.add(ear);extras.push(ear)}
-  const tail=new THREE.Mesh(new THREE.SphereGeometry(.13,7,6),animalMats.cream);tail.position.set(-.48,.5,0);g.add(tail);
+ if(isRabbit){
+  animalEllipsoid(g,cream,[-.55,.53,0],[.13,.13,.13],10);
+  // Coxas mais fortes dão ao coelho a postura de salto característica.
+  for(const side of [-1,1])animalEllipsoid(g,coat,[-.34,.37,side*.19],[.23,.22,.15],11);
+ }else if(isDeer){
+  animalEllipsoid(g,cream,[-.53,.69,0],[.11,.16,.16],10);
+  // Pequena cauda curta.
+  const tail=animalEllipsoid(g,cream,[-.68,.82,0],[.12,.18,.12],9);tail.rotation.z=-.4;
  }else{
-  const tail=new THREE.Mesh(new THREE.ConeGeometry(.09,.3,5),animalMats.dark);tail.position.set(-.72,.7,0);tail.rotation.z=Math.PI/2;g.add(tail);extras.push(tail);
+  const tail=animalEllipsoid(g,dark,[-.79,.69,0],[.22,.1,.105],10);tail.rotation.z=.35;
  }
  const angle=random()*Math.PI*2,radius=35+random()*190;
  g.position.set(Math.cos(angle)*radius,0,Math.sin(angle)*radius);
  const size=isDeer?.95+random()*.35:isBoar?.9+random()*.25:.55+random()*.25;
  g.scale.setScalar(size);
- // Sombra suave acompanha o animal e reduz o efeito visual de flutuação.
- const blobShadow=new THREE.Mesh(new THREE.CircleGeometry(isRabbit?.34:isBoar?.62:.58,16),new THREE.MeshBasicMaterial({color:'#243326',transparent:true,opacity:.20,depthWrite:false,side:THREE.DoubleSide}));
+ const blobShadow=new THREE.Mesh(new THREE.CircleGeometry(isRabbit?.34:isBoar?.62:.58,16),new THREE.MeshBasicMaterial({color:'#243326',transparent:true,opacity:.2,depthWrite:false,side:THREE.DoubleSide}));
  blobShadow.rotation.x=-Math.PI/2;blobShadow.position.y=.025;g.add(blobShadow);
  g.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true}});
  scene.add(g);
  const hpMax=isRabbit?38+Math.round(size*10):isDeer?115+Math.round(size*35):155+Math.round(size*45);
  const animal={group:g,body,headRig,legs,extras,kind,target:new THREE.Vector3(),state:'idle',stateTime:2+random()*5,
-  hpMax,hp:hpMax,blood:null,deathTime:0,
-  speed:isDeer?2.1:isBoar?1.35:2.6,speedFactor:1,heading:random()*Math.PI*2,phase:random()*Math.PI*2,
+  hpMax,hp:hpMax,blood:null,deathTime:0,speed:isDeer?2.1:isBoar?1.35:2.6,speedFactor:1,heading:random()*Math.PI*2,phase:random()*Math.PI*2,
   gait:0,homeX:g.position.x,homeZ:g.position.z};
  pickAnimalTarget(animal);animal.stateTime=1+random()*5;animal.state='idle';
  animal.info={name:isDeer?'Cervo':isBoar?'Javali':'Coelho',description:isDeer?'Herbívoro ágil que vive na floresta e foge quando percebe predadores.':isBoar?'Animal forte que procura alimento no solo e pode se defender de ameaças.':'Pequeno herbívoro rápido, atento e muito ágil para escapar de predadores.',details:isDeer?'Mamífero · Herbívoro · Vida terrestre':isBoar?'Mamífero · Onívoro · Vida terrestre':'Mamífero · Herbívoro · Vida terrestre'};
@@ -346,18 +408,39 @@ const wolfMats={
 };
 function makeWolf(index,pack){
  const g=new THREE.Group();
- const body=new THREE.Mesh(bodyGeo,wolfMats.fur);body.scale.set(.78,.48,.38);body.position.y=.72;g.add(body);
- const chest=new THREE.Mesh(bodyGeo,wolfMats.dark);chest.scale.set(.3,.4,.36);chest.position.set(.34,.69,0);g.add(chest);
- const headRig=new THREE.Group();headRig.position.set(.57,.91,0);g.add(headRig);
- const head=new THREE.Mesh(headGeo,wolfMats.fur);head.scale.set(.29,.25,.25);head.position.x=.08;headRig.add(head);
- const muzzle=new THREE.Mesh(new THREE.ConeGeometry(.14,.38,7),wolfMats.dark);muzzle.rotation.z=-Math.PI/2;muzzle.position.set(.36,-.07,0);headRig.add(muzzle);
- for(const side of [-1,1]){const ear=new THREE.Mesh(new THREE.ConeGeometry(.09,.25,5),wolfMats.dark);ear.position.set(.02,.25,side*.16);headRig.add(ear)}
- const legs=[];
- for(const x of [-.4,.38])for(const z of [-.22,.22]){
-  const pivot=new THREE.Group();pivot.position.set(x,.52,z);
-  const leg=new THREE.Mesh(new THREE.CylinderGeometry(.08,.095,.56,6),wolfMats.dark);leg.position.y=-.27;pivot.add(leg);g.add(pivot);legs.push(pivot);
+ // Lobo com peito profundo, cintura estreita, garupa e pelagem em camadas.
+ animalEllipsoid(g,wolfMats.fur,[-.04,.72,0],[.79,.43,.34],16);
+ animalEllipsoid(g,wolfMats.dark,[.38,.72,0],[.36,.39,.32],14);
+ animalEllipsoid(g,wolfMats.fur,[-.43,.7,0],[.39,.39,.32],14);
+ const neck=animalEllipsoid(g,wolfMats.fur,[.48,.87,0],[.32,.42,.29],14);neck.rotation.z=-.42;
+ const headRig=new THREE.Group();headRig.position.set(.68,1.08,0);g.add(headRig);
+ animalEllipsoid(headRig,wolfMats.fur,[.07,.02,0],[.29,.25,.24],14);
+ // Focinho canino comprido e afilado, mandíbula inferior e nariz escuro.
+ animalEllipsoid(headRig,wolfMats.fur,[.3,-.09,0],[.27,.14,.15],12);
+ animalEllipsoid(headRig,wolfMats.dark,[.49,-.12,0],[.085,.075,.11],10);
+ animalEllipsoid(headRig,wolfMats.light,[.34,-.19,0],[.2,.055,.12],10);
+ const eyeMat=new THREE.MeshStandardMaterial({color:'#171713',roughness:.25});
+ for(const side of [-1,1]){
+  animalEllipsoid(headRig,eyeMat,[.13,.1,side*.205],[.04,.045,.025],9);
+  const ear=new THREE.Mesh(new THREE.ConeGeometry(.105,.32,7),wolfMats.dark);
+  ear.position.set(-.08,.3,side*.15);ear.rotation.z=-.12;headRig.add(ear);
+  // Bochecha clara e pequenas marcas do pelo.
+  animalEllipsoid(headRig,wolfMats.light,[.02,-.13,side*.16],[.15,.1,.075],10);
  }
- const tail=new THREE.Mesh(new THREE.CapsuleGeometry(.09,.42,4,6),wolfMats.dark);tail.position.set(-.76,.68,0);tail.rotation.z=-.8;g.add(tail);
+ const legs=[];
+ for(const x of [-.42,.39])for(const z of [-.22,.22]){
+  const front=x>0,pivot=new THREE.Group();pivot.position.set(x,.52,z);g.add(pivot);
+  const len=front?.34:.31;
+  animalLimb(pivot,new THREE.Vector3(0,0,0),new THREE.Vector3(front?.035:-.035,-len,0),.09,wolfMats.fur,7);
+  const knee=new THREE.Group();knee.position.set(front?.035:-.035,-len,0);pivot.add(knee);
+  animalLimb(knee,new THREE.Vector3(0,0,0),new THREE.Vector3(front?.02:.06,-.27,0),.065,wolfMats.dark,7);
+  animalEllipsoid(knee,wolfMats.dark,[.1,-.29,0],[.13,.07,.085],9);
+  legs.push(pivot);
+ }
+ // Cauda longa e espessa, inclinada para baixo.
+ const tail=new THREE.Group();tail.position.set(-.69,.77,0);tail.rotation.z=-.55;g.add(tail);
+ animalEllipsoid(tail,wolfMats.dark,[-.2,-.12,0],[.34,.13,.14],12);
+ animalEllipsoid(tail,wolfMats.fur,[-.38,-.17,0],[.15,.12,.13],10);
  const angle=pack===0?-.65:Math.PI-.65;
  g.position.set(Math.cos(angle)*(95+index*4),0,Math.sin(angle)*(95+index*4));
  const sizeFactor=.88+random()*.62;g.scale.setScalar(sizeFactor);scene.add(g);
