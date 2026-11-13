@@ -137,38 +137,73 @@ for(let i=0;i<14;i++){
   speed:.12+random()*.12,phase:random()*6});
 }
 
-// FLORESTA DENSA: árvores instanciadas para manter o desempenho mesmo em grande quantidade.
-const greens=['#477d45','#56894b','#3e713f','#63934e','#35683a','#719b55'];
-const trunkGeo=new THREE.CylinderGeometry(.16,.24,1.8,7);
+// FLORESTA DENSA: árvores de copa volumosa, galhos e arbustos instanciados.
+// Instancing mantém milhares de elementos com poucas chamadas de desenho.
+const greens=['#477d45','#56894b','#3e713f','#63934e','#35683a','#719b55','#789b58'];
+const trunkGeo=new THREE.CylinderGeometry(.14,.27,2.1,7);
+const branchGeo=new THREE.CylinderGeometry(.055,.095,1.05,6);
 const crownGeo=new THREE.IcosahedronGeometry(1.05,1);
 const crownTopGeo=new THREE.IcosahedronGeometry(.78,1);
+const crownSideGeo=new THREE.IcosahedronGeometry(.68,1);
+const shrubGeo=new THREE.IcosahedronGeometry(.42,1);
 const trunkMat=new THREE.MeshStandardMaterial({color:'#76503a',roughness:1,flatShading:true});
+const branchMat=new THREE.MeshStandardMaterial({color:'#68452f',roughness:1,flatShading:true});
 const crownMat=new THREE.MeshStandardMaterial({color:'#71834a',roughness:1,flatShading:true});
 const crownTopMat=new THREE.MeshStandardMaterial({color:'#8d9854',roughness:1,flatShading:true});
+const shrubMat=new THREE.MeshStandardMaterial({color:'#587b42',roughness:1,flatShading:true});
 const forestCount=2600;
 const trunks=new THREE.InstancedMesh(trunkGeo,trunkMat,forestCount);
+const branches=new THREE.InstancedMesh(branchGeo,branchMat,forestCount*2);
 const crowns=new THREE.InstancedMesh(crownGeo,crownMat,forestCount);
 const crownTops=new THREE.InstancedMesh(crownTopGeo,crownTopMat,forestCount);
-trunks.castShadow=true;crowns.castShadow=true;crownTops.castShadow=true;
+const crownSides=new THREE.InstancedMesh(crownSideGeo,crownMat,forestCount*2);
+trunks.castShadow=true;branches.castShadow=true;crowns.castShadow=true;crownTops.castShadow=true;crownSides.castShadow=true;
 const dummy=new THREE.Object3D();
 let planted=0;
 for(let i=0;i<forestCount*3&&planted<forestCount;i++){
  const x=(random()-.5)*490,z=(random()-.5)*490;
- // Mantém uma margem livre acompanhando o traçado real do rio, não uma linha aproximada.
+ // Mantém margem livre junto ao rio e ao espaço central de observação.
  if(distanceToRiver(x,z)<19||(Math.abs(x)<31&&Math.abs(z)<31))continue;
  const scale=.8+random()*.85,rot=random()*Math.PI*2;
- dummy.position.set(x,.9*scale,z);dummy.rotation.set(0,rot,0);dummy.scale.set(scale,scale,scale);dummy.updateMatrix();trunks.setMatrixAt(planted,dummy.matrix);
- dummy.position.set(x,1.95*scale,z);dummy.rotation.set(0,rot,0);dummy.scale.set(scale,scale,scale);dummy.updateMatrix();crowns.setMatrixAt(planted,dummy.matrix);
- dummy.position.set(x,2.75*scale,z);dummy.rotation.set(0,rot,0);dummy.scale.set(scale,scale,scale);dummy.updateMatrix();crownTops.setMatrixAt(planted,dummy.matrix);
+ dummy.position.set(x,1.05*scale,z);dummy.rotation.set(0,rot,0);dummy.scale.set(scale,scale,scale);dummy.updateMatrix();trunks.setMatrixAt(planted,dummy.matrix);
+ // Dois galhos inclinados aparecem entre o tronco e a copa.
+ for(const side of [-1,1]){
+  const bi=planted*2+(side===1?1:0);
+  dummy.position.set(x+side*.28*scale,1.55*scale,z);dummy.rotation.set(0,rot,side*.92);dummy.scale.set(scale,scale,scale);dummy.updateMatrix();branches.setMatrixAt(bi,dummy.matrix);
+  // Copas laterais criam silhueta orgânica, em vez de uma única bola geométrica.
+  dummy.position.set(x+side*.58*scale,2.08*scale,z+(random()-.5)*.22*scale);
+  dummy.rotation.set(0,rot,0);dummy.scale.setScalar(scale*(.82+random()*.18));dummy.updateMatrix();crownSides.setMatrixAt(bi,dummy.matrix);
+ }
+ dummy.position.set(x,2.05*scale,z);dummy.rotation.set(0,rot,0);dummy.scale.set(scale,scale,scale);dummy.updateMatrix();crowns.setMatrixAt(planted,dummy.matrix);
+ dummy.position.set(x,2.92*scale,z);dummy.rotation.set(0,rot,0);dummy.scale.set(scale,scale,scale);dummy.updateMatrix();crownTops.setMatrixAt(planted,dummy.matrix);
  const shade=new THREE.Color(greens[Math.floor(random()*greens.length)]);
  crowns.setColorAt(planted,shade);crownTops.setColorAt(planted,shade.clone().multiplyScalar(1.12));
+ crownSides.setColorAt(planted*2,shade.clone().multiplyScalar(.88));
+ crownSides.setColorAt(planted*2+1,shade.clone().multiplyScalar(1.04));
  planted++;
 }
-trunks.count=planted;crowns.count=planted;crownTops.count=planted;
-trunks.instanceMatrix.needsUpdate=true;crowns.instanceMatrix.needsUpdate=true;crownTops.instanceMatrix.needsUpdate=true;
-if(crowns.instanceColor)crowns.instanceColor.needsUpdate=true;
-if(crownTops.instanceColor)crownTops.instanceColor.needsUpdate=true;
-scene.add(trunks,crowns,crownTops);
+trunks.count=planted;branches.count=planted*2;crowns.count=planted;crownTops.count=planted;crownSides.count=planted*2;
+for(const mesh of [trunks,branches,crowns,crownTops,crownSides])mesh.instanceMatrix.needsUpdate=true;
+for(const mesh of [crowns,crownTops,crownSides])if(mesh.instanceColor)mesh.instanceColor.needsUpdate=true;
+scene.add(trunks,branches,crowns,crownTops,crownSides);
+
+// Vegetação rasteira em pequenos arbustos para quebrar grandes áreas vazias.
+// A mesma regra de distância mantém a margem do rio limpa.
+const shrubCount=1050;
+const shrubs=new THREE.InstancedMesh(shrubGeo,shrubMat,shrubCount);
+shrubs.castShadow=true;
+let shrubbed=0;
+for(let i=0;i<shrubCount*4&&shrubbed<shrubCount;i++){
+ const x=(random()-.5)*485,z=(random()-.5)*485;
+ if(distanceToRiver(x,z)<16||(Math.abs(x)<34&&Math.abs(z)<34))continue;
+ const size=.55+random()*.9;
+ dummy.position.set(x,.24*size,z);dummy.rotation.set(0,random()*Math.PI*2,0);dummy.scale.set(size,.72*size,size);dummy.updateMatrix();
+ shrubs.setMatrixAt(shrubbed,dummy.matrix);
+ const tint=new THREE.Color(greens[Math.floor(random()*greens.length)]).multiplyScalar(.72+random()*.35);
+ shrubs.setColorAt(shrubbed,tint);shrubbed++;
+}
+shrubs.count=shrubbed;shrubs.instanceMatrix.needsUpdate=true;if(shrubs.instanceColor)shrubs.instanceColor.needsUpdate=true;
+scene.add(shrubs);
 
 // Pedras espalhadas pela floresta e pelas margens.
 for(let i=0;i<190;i++){const x=(random()-.5)*480,z=(random()-.5)*480;if(distanceToRiver(x,z)<16)continue;const s=.4+random()*.8;const rock=new THREE.Mesh(new THREE.DodecahedronGeometry(.8,0),new THREE.MeshStandardMaterial({color:'#858b7b',roughness:1}));rock.position.set(x,.42*s,z);rock.scale.set(s,s*.75,s);rock.rotation.set(.2,random()*Math.PI,.15);rock.castShadow=true;scene.add(rock)}
