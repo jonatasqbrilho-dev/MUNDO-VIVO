@@ -29,8 +29,8 @@ canvas{display:block;width:100%;height:100%;image-rendering:pixelated;image-rend
 <div id="scene"></div>
 <header class="top"><div class="logo">MV</div><div class="brand"><b>MUNDO VIVO</b><small>O começo de uma civilização</small></div><div class="status"><i></i>MUNDO EM FORMAÇÃO</div></header>
 <section class="card"><div class="eyebrow">CAPÍTULO 01 · O PRIMEIRO TERRITÓRIO</div><h1>Um mundo esperando por seus habitantes.</h1><p>Uma floresta viva: animais com movimentos mais naturais, lobos caçando, peixes nadando no rio e pássaros cruzando o céu.</p><div class="stats"><div><b>84</b><span>Herbívoros</span></div><div><b>500×500</b><span>Território</span></div><div><b>06</b><span>Lobos predadores</span></div></div></section>
-<div class="tools"><button id="reset">⌖ &nbsp;Centralizar</button><button id="help">? &nbsp;Ajuda</button></div>
-<aside class="guide" id="guide"><button id="close" aria-label="Fechar">×</button><strong>Explore o território</strong><p><b>Arraste com o botão esquerdo</b> para mover o mapa</p><p><b>Roda do mouse</b> para aproximar ou afastar</p><p><b>Botão direito</b> também move o mapa</p><p><b>Botão Centralizar</b> para voltar ao início</p><p><b>Fauna:</b> animais terrestres, peixes no rio e pássaros voando sobre a floresta</p></aside>
+<div class="tools"><button id="zoomIn" aria-label="Aumentar zoom">＋ Zoom</button><button id="zoomOut" aria-label="Diminuir zoom">－ Zoom</button><button id="reset">⌖ &nbsp;Centralizar</button><button id="help">? &nbsp;Ajuda</button></div>
+<aside class="guide" id="guide"><button id="close" aria-label="Fechar">×</button><strong>Explore o território</strong><p><b>Arraste com o botão esquerdo</b> para mover o mapa</p><p><b>Roda do mouse ou botões +/− Zoom</b> para aproximar ou afastar</p><p><b>Botão direito</b> também move o mapa</p><p><b>Botão Centralizar</b> para voltar ao início</p><p><b>Fauna:</b> animais terrestres, peixes no rio e pássaros voando sobre a floresta</p></aside>
 <section id="animalInfo" class="animal-info" hidden aria-live="polite"><button id="animalInfoClose" aria-label="Fechar">×</button><div class="eyebrow">ANIMAL OBSERVADO</div><h2 id="animalName">Animal</h2><p id="animalDescription"></p><small id="animalDetails"></small></section>
 <footer class="footer"><span class="live"></span>Clique em um animal para descobrir qual espécie é</footer>
 <script type="importmap">
@@ -51,13 +51,13 @@ function random(){seed=(seed*1664525+1013904223)>>>0;return seed/4294967296}
 const scene=new THREE.Scene(); scene.background=new THREE.Color('#526b3e');
 const viewHeight=260;
 const camera=new THREE.OrthographicCamera(-viewHeight*innerWidth/innerHeight/2,viewHeight*innerWidth/innerHeight/2,viewHeight/2,-viewHeight/2,.1,1800);
-const startPos=new THREE.Vector3(0,330,105); camera.position.copy(startPos); camera.lookAt(0,0,0);
+const startPos=new THREE.Vector3(0,330,105); camera.position.copy(startPos); camera.zoom=2.0; camera.lookAt(0,0,0); camera.updateProjectionMatrix();
 const renderer=new THREE.WebGLRenderer({antialias:false,powerPreference:'high-performance'});
-renderer.setPixelRatio(1); renderer.setSize(Math.max(240,Math.floor(innerWidth*.48)),Math.max(160,Math.floor(innerHeight*.48)),false);
+const renderScale=.7; renderer.setPixelRatio(1); renderer.setSize(Math.max(240,Math.floor(innerWidth*renderScale)),Math.max(160,Math.floor(innerHeight*renderScale)),false);
 renderer.domElement.style.width='100%';renderer.domElement.style.height='100%';
 renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 renderer.outputColorSpace=THREE.SRGBColorSpace; mount.appendChild(renderer.domElement);
-const controls=new OrbitControls(camera,renderer.domElement); controls.target.set(0,0,0); controls.enableRotate=false; controls.enablePan=true; controls.enableZoom=true; controls.enableDamping=true; controls.dampingFactor=.08; controls.zoomSpeed=1.15; controls.panSpeed=1.15; controls.screenSpacePanning=true; controls.minZoom=.55;controls.maxZoom=2.8;controls.mouseButtons.LEFT=THREE.MOUSE.PAN; controls.mouseButtons.MIDDLE=THREE.MOUSE.DOLLY; controls.mouseButtons.RIGHT=THREE.MOUSE.PAN;
+const controls=new OrbitControls(camera,renderer.domElement); controls.target.set(0,0,0); controls.enableRotate=false; controls.enablePan=true; controls.enableZoom=true; controls.enableDamping=true; controls.dampingFactor=.08; controls.zoomSpeed=1.25; controls.panSpeed=1.15; controls.screenSpacePanning=true; controls.minZoom=.55;controls.maxZoom=12;controls.mouseButtons.LEFT=THREE.MOUSE.PAN; controls.mouseButtons.MIDDLE=THREE.MOUSE.DOLLY; controls.mouseButtons.RIGHT=THREE.MOUSE.PAN;
 
 scene.add(new THREE.HemisphereLight('#d7e4a5','#34452b',1.45));
 const sun=new THREE.DirectionalLight('#ffe0a0',1.65); sun.position.set(-35,55,25); sun.castShadow=true; sun.shadow.mapSize.set(1024,1024); sun.shadow.camera.left=-300;sun.shadow.camera.right=300;sun.shadow.camera.top=300;sun.shadow.camera.bottom=-300;scene.add(sun);
@@ -317,9 +317,12 @@ function chooseWolfPrey(w){
  return best;
 }
 
-function resize(){const aspect=innerWidth/innerHeight;camera.left=-viewHeight*aspect/2;camera.right=viewHeight*aspect/2;camera.top=viewHeight/2;camera.bottom=-viewHeight/2;camera.updateProjectionMatrix();renderer.setSize(Math.max(240,Math.floor(innerWidth*.48)),Math.max(160,Math.floor(innerHeight*.48)),false)}
+function resize(){const aspect=innerWidth/innerHeight;camera.left=-viewHeight*aspect/2;camera.right=viewHeight*aspect/2;camera.top=viewHeight/2;camera.bottom=-viewHeight/2;camera.updateProjectionMatrix();renderer.setSize(Math.max(240,Math.floor(innerWidth*renderScale)),Math.max(160,Math.floor(innerHeight*renderScale)),false)}
 addEventListener('resize',resize);
-document.getElementById('reset').onclick=()=>{camera.position.copy(startPos);camera.zoom=1;camera.updateProjectionMatrix();controls.target.set(0,0,0);controls.update()};
+document.getElementById('reset').onclick=()=>{camera.position.copy(startPos);camera.zoom=2.0;camera.updateProjectionMatrix();controls.target.set(0,0,0);controls.update()};
+function changeZoom(factor){camera.zoom=THREE.MathUtils.clamp(camera.zoom*factor,controls.minZoom,controls.maxZoom);camera.updateProjectionMatrix();}
+document.getElementById('zoomIn').onclick=()=>changeZoom(1.3);
+document.getElementById('zoomOut').onclick=()=>changeZoom(1/1.3);
 const guide=document.getElementById('guide');document.getElementById('help').onclick=()=>guide.hidden=!guide.hidden;document.getElementById('close').onclick=()=>guide.hidden=true;
 // Seleção por clique: identifica qualquer parte visível do modelo do animal.
 const animalInfoPanel=document.getElementById('animalInfo');
