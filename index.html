@@ -344,7 +344,7 @@ function animate(){
  for(const f of fish){
   f.u=(f.u+delta*f.speed)%1;
   const p=riverCurve.getPointAt(f.u),tangent=riverCurve.getTangentAt(f.u);
-  f.group.position.set(p.x,.53+Math.sin(t*2+f.phase)*.08,p.z);
+  f.group.position.set(p.x,.20+Math.sin(t*2+f.phase)*.035,p.z);
   f.group.rotation.y=Math.atan2(-tangent.z,tangent.x);
   f.tail.rotation.y=Math.sin(t*8+f.phase)*.55;
  }
